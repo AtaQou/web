@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        #changeBaseButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            cursor: pointer;
+        }
+        #saveBaseButton {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            cursor: pointer;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button id="changeBaseButton">Change Base Location</button>
+    <button id="saveBaseButton">Save Base Location</button>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([37.9838, 23.7275], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var baseMarker;
+        var changingBase = false;
+
+        fetch('fetch_map_data.php')
+            .then(response => response.json())
+            .then(data => {
+                // Add vehicle markers
+                data.vehicles.forEach(vehicle => {
+                    L.marker([vehicle.latitude, vehicle.longitude], {icon: L.icon({iconUrl: 'vehicle_icon.png', iconSize: [25, 41]})})
+                        .addTo(map)
+                        .bindPopup(`<b>Vehicle:</b> ${vehicle.username}<br><b>Cargo:</b> ${vehicle.cargo}<br><b>Status:</b> ${vehicle.status}`);
+                });
+
+                // Add request markers
+                data.requests.forEach(request => {
+                    var iconUrl = request.status === 'completed' ? 'completed_request_icon.png' : 'pending_request_icon.png';
+                    L.marker([request.latitude, request.longitude], {icon: L.icon({iconUrl: iconUrl, iconSize: [25, 41]})})
+                        .addTo(map)
+                        .bindPopup(`<b>Request from:</b> ${request.citizen_name}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_type}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`);
+                });
+
+                // Add offer markers
+                data.offers.forEach(offer => {
+                    var iconUrl = offer.status === 'completed' ? 'completed_offer_icon.png' : 'pending_offer_icon.png';
+                    L.marker([offer.latitude, offer.longitude], {icon: L.icon({iconUrl: iconUrl, iconSize: [25, 41]})})
+                        .addTo(map)
+                        .bindPopup(`<b>Offer from:</b> ${offer.citizen_name}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_type}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`);
+                });
+
+                // Add base marker
+                if (data.base_location) {
+                    baseMarker = L.marker([data.base_location.latitude, data.base_location.longitude], {draggable: false})
+                        .addTo(map)
+                        .bindPopup('<b>Base Location</b>');
+                }
+
+                document.getElementById('changeBaseButton').addEventListener('click', function () {
+                    if (baseMarker) {
+                        baseMarker.dragging.enable();
+                        changingBase = true;
+                        document.getElementById('saveBaseButton').style.display = 'block';
+                    }
+                });
+
+                document.getElementById('saveBaseButton').addEventListener('click', function () {
+                    if (changingBase && baseMarker) {
+                        var newLatLng = baseMarker.getLatLng();
+                        fetch('update_base_location.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                latitude: newLatLng.lat,
+                                longitude: newLatLng.lng
+                            })
+                        })
+                        .then(response => response.text())
+                        .then(data => {
+                            baseMarker.dragging.disable();
+                            changingBase = false;
+                            document.getElementById('saveBaseButton').style.display = 'none';
+                            alert('Base location updated successfully.');
+                        });
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
