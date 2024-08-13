@@ -6,37 +6,42 @@ USE web;
 
 CREATE TABLE vehicles (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50),
-    latitude DOUBLE,
-    longitude DOUBLE,
+    username VARCHAR(255) NOT NULL,
     cargo VARCHAR(255),
-    status VARCHAR(50)
+    status ENUM('available', 'busy', 'unavailable') DEFAULT 'available',
+    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
+    longitude DECIMAL(11, 8)  -- Γεωγραφικό μήκος για τον marker στο χάρτη
 );
 
 CREATE TABLE requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    citizen_name VARCHAR(100),
-    citizen_phone VARCHAR(15),
-    latitude DOUBLE,
-    longitude DOUBLE,
-    item_type VARCHAR(255),
-    quantity INT,
-    request_date DATETIME,
-    vehicle_id INT,
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+    citizen_name VARCHAR(255) NOT NULL,
+    citizen_phone VARCHAR(20) NOT NULL,
+    request_date DATETIME NOT NULL,
+    item VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
+    vehicle_id INT,  -- Ξένη κλείδα προς τον πίνακα vehicles
+    assignment_date DATETIME,
+    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
+    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    CONSTRAINT fk_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
+
 
 CREATE TABLE offers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    citizen_name VARCHAR(100),
-    citizen_phone VARCHAR(15),
-    latitude DOUBLE,
-    longitude DOUBLE,
-    item_type VARCHAR(255),
-    quantity INT,
-    offer_date DATETIME,
-    vehicle_id INT,
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+    citizen_name VARCHAR(255) NOT NULL,
+    citizen_phone VARCHAR(20) NOT NULL,
+    offer_date DATETIME NOT NULL,
+    item VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
+    vehicle_id INT,  -- Ξένη κλείδα προς τον πίνακα vehicles
+    assignment_date DATETIME,
+    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
+    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    CONSTRAINT fk_offer_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
 
 
@@ -71,27 +76,6 @@ CREATE TABLE IF NOT EXISTS inventory (
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
-
-
-INSERT INTO users (username, password_hash, role, name, phone, location) 
-VALUES (
-    'admin', 
-    '12345', 
-    'administrator', 
-    'EGW', 
-    '1234567890', 
-    POINT(37.9838, 23.7275)  -- Παράδειγμα συντεταγμένων για την Αθήνα
-);
-SELECT * FROM users;
-
-SHOW TABLES; 
-select * from categories;
-select * from inventory;
-DELETE FROM categories where id=11;
-
-ALTER TABLE requests ADD COLUMN status ENUM('pending', 'completed') DEFAULT 'pending';
-ALTER TABLE offers ADD COLUMN status ENUM('pending', 'completed') DEFAULT 'pending';
-
 -- Creating a table for base location
 CREATE TABLE base_location (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,18 +83,18 @@ CREATE TABLE base_location (
     longitude DOUBLE
 );
 
-INSERT INTO vehicles (username, latitude, longitude, cargo, status) VALUES
-('Vehicle1', 37.9838, 23.7275, 'Medical Supplies', 'active'),
-('Vehicle2', 37.9848, 23.7285, 'Food Supplies', 'active'),
-('Vehicle3', 37.9828, 23.7265, 'Water Bottles', 'inactive');
+CREATE TABLE IF NOT EXISTS announcements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-INSERT INTO requests (citizen_name, citizen_phone, item_type, quantity, latitude, longitude, request_date, status) VALUES
-('John Doe', '1234567890', 'Blankets', 10, 37.9868, 23.7295, '2024-08-12', 'pending'),
-('Jane Smith', '0987654321', 'First Aid Kits', 5, 37.9818, 23.7255, '2024-08-10', 'pending');
+CREATE TABLE IF NOT EXISTS announcement_items (
+    announcement_id INT,
+    item_id INT,
+    PRIMARY KEY (announcement_id, item_id),
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE
+);
 
-INSERT INTO offers (citizen_name, citizen_phone, item_type, quantity, latitude, longitude, offer_date, status) VALUES
-('Alice Johnson', '1122334455', 'Canned Food', 20, 37.9858, 23.7265, '2024-08-11', 'pending'),
-('Bob Brown', '5566778899', 'Bottled Water', 50, 37.9848, 23.7275, '2024-08-12', 'pending');
-
-INSERT INTO base_location (latitude, longitude) VALUES
-(37.9830, 23.7270);
