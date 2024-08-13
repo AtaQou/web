@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':category_id', $category_id);
             $stmt->execute();
             $_SESSION['message'] = 'Category deleted successfully.';
-            header('Location: manage.html');
+            header('Location: viewdb.php');
             exit;
         } catch (PDOException $e) {
             echo 'Error deleting category: ' . $e->getMessage();
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':item_id', $item_id);
             $stmt->execute();
             $_SESSION['message'] = 'Item deleted successfully.';
-            header('Location: manage.html');
+            header('Location: viewdb.php');
             exit;
         } catch (PDOException $e) {
             echo 'Error deleting item: ' . $e->getMessage();
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':item_id', $item_id);
             $stmt->execute();
             $_SESSION['message'] = 'Quantity updated successfully.';
-            header('Location: manage.html');
+            header('Location: viewdb.php');
             exit;
         } catch (PDOException $e) {
             echo 'Error updating quantity: ' . $e->getMessage();
@@ -49,13 +49,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$selected_categories = isset($_POST['categories']) ? $_POST['categories'] : [];
+
+// Fetch categories from the database
 try {
-    // Fetch categories from the database
     $stmt = $conn->query("SELECT * FROM categories ORDER BY id ASC");
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo 'Database error: ' . $e->getMessage();
+    exit;
+}
 
-    // Fetch items from the database
-    $stmt = $conn->query("SELECT * FROM inventory ORDER BY category_id ASC, id ASC");
+// Fetch items based on selected categories
+try {
+    $category_filter = '';
+    if (!empty($selected_categories)) {
+        $category_ids = implode(',', array_map('intval', $selected_categories));
+        $category_filter = "WHERE category_id IN ($category_ids)";
+    }
+    
+    $stmt = $conn->query("SELECT * FROM inventory $category_filter ORDER BY category_id ASC, id ASC");
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     echo 'Database error: ' . $e->getMessage();
@@ -73,12 +86,41 @@ try {
         .back-button {
             margin-bottom: 20px;
         }
+        .filter-form {
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
-    <h1>Categories and Items in Database</h1>
+    <h1>Warehouse Inventory Status</h1>
 
     <button class="back-button" onclick="window.location.href='manage.html'">Back to Manage Page</button>
+
+    <h2>Filter Items by Category</h2>
+    <form action="viewdb.php" method="post" class="filter-form">
+        <fieldset>
+            <legend>Select Categories:</legend>
+            <?php foreach ($categories as $category): ?>
+                <label>
+                    <input type="checkbox" name="categories[]" value="<?= $category['id'] ?>" 
+                        <?= in_array($category['id'], $selected_categories) ? 'checked' : '' ?>>
+                    <?= htmlspecialchars($category['name']) ?>
+                </label><br>
+            <?php endforeach; ?>
+        </fieldset>
+        <input type="submit" value="Apply Filters">
+    </form>
 
     <h2>Categories</h2>
     <?php if (count($categories) > 0): ?>
@@ -99,24 +141,43 @@ try {
 
     <h2>Items</h2>
     <?php if (count($items) > 0): ?>
-        <ul>
-            <?php foreach ($items as $item): ?>
-                <li>
-                    <?= htmlspecialchars($item['name']) ?> (Category ID: <?= $item['category_id'] ?>): <?= htmlspecialchars($item['description']) ?> - Quantity: <?= $item['quantity'] ?>
-                    <form action="viewdb.php" method="post" style="display:inline;">
-                        <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                        <input type="submit" name="delete_item" value="Delete">
-                    </form>
-                    <form action="viewdb.php" method="post" style="display:inline;">
-                        <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                        <input type="number" name="new_quantity" min="0" value="<?= $item['quantity'] ?>">
-                        <input type="submit" name="update_quantity" value="Update Quantity">
-                    </form>
-                </li>
-            <?php endforeach; ?>
-        </ul>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category ID</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($items as $item): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($item['name']) ?></td>
+                        <td><?= $item['category_id'] ?></td>
+                        <td><?= htmlspecialchars($item['description']) ?></td>
+                        <td>
+                            <form action="viewdb.php" method="post" style="display:inline;">
+                                <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                <input type="number" name="new_quantity" min="0" value="<?= $item['quantity'] ?>">
+                                <input type="submit" name="update_quantity" value="Update Quantity">
+                            </form>
+                            <?= $item['quantity'] ?>
+                        </td>
+                        <td>
+                            <form action="viewdb.php" method="post" style="display:inline;">
+                                <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                <input type="submit" name="delete_item" value="Delete">
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     <?php else: ?>
         <p>No items in the database.</p>
     <?php endif; ?>
 </body>
 </html>
+

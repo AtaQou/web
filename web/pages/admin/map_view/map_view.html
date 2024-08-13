@@ -10,7 +10,7 @@
             height: 100vh;
             width: 100%;
         }
-        #changeBaseButton {
+        .filter-buttons {
             position: absolute;
             top: 10px;
             left: 10px;
@@ -18,25 +18,24 @@
             background-color: white;
             border: 1px solid #ccc;
             padding: 10px;
-            cursor: pointer;
         }
-        #saveBaseButton {
-            position: absolute;
-            top: 50px;
-            left: 10px;
-            z-index: 1000;
-            background-color: white;
-            border: 1px solid #ccc;
-            padding: 10px;
-            cursor: pointer;
-            display: none;
+        .filter-buttons label {
+            display: block;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <button id="changeBaseButton">Change Base Location</button>
-    <button id="saveBaseButton">Save Base Location</button>
+    <div class="filter-buttons">
+        <label><input type="checkbox" id="showPendingRequests" checked> Pending Requests</label>
+        <label><input type="checkbox" id="showActiveRequests" checked> Active Requests</label>
+        <label><input type="checkbox" id="showOffers" checked> Offers</label>
+        <label><input type="checkbox" id="showActiveVehicles" checked> Active Vehicles</label>
+        <label><input type="checkbox" id="showInactiveVehicles" checked> Inactive Vehicles</label>
+        <label><input type="checkbox" id="showLines" checked> Show Lines</label>
+        <button id="changeBaseButton">Change Base Location</button>
+        <button id="saveBaseButton">Save Base Location</button>
+    </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -49,30 +48,86 @@
         var baseMarker;
         var changingBase = false;
 
+        var vehicleMarkers = [];
+        var requestMarkers = [];
+        var offerMarkers = [];
+        var lines = [];
+
         fetch('fetch_map_data.php')
             .then(response => response.json())
             .then(data => {
                 // Add vehicle markers
                 data.vehicles.forEach(vehicle => {
-                    L.marker([vehicle.latitude, vehicle.longitude], {icon: L.icon({iconUrl: 'vehicle_icon.png', iconSize: [25, 41]})})
-                        .addTo(map)
-                        .bindPopup(`<b>Vehicle:</b> ${vehicle.username}<br><b>Cargo:</b> ${vehicle.cargo}<br><b>Status:</b> ${vehicle.status}`);
-                });
+                    var marker = L.marker([vehicle.latitude, vehicle.longitude], {
+                        icon: L.divIcon({className: 'vehicle-icon', html: `<div style="background: #00f; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Vehicle:</b> ${vehicle.username}<br><b>Cargo:</b> ${vehicle.cargo}<br><b>Status:</b> ${vehicle.status}`)
+                    .addTo(map);
+                    
+                    vehicleMarkers.push({
+                        marker: marker,
+                        vehicle: vehicle
+                    });
 
-                // Add request markers
-                data.requests.forEach(request => {
-                    var iconUrl = request.status === 'completed' ? 'completed_request_icon.png' : 'pending_request_icon.png';
-                    L.marker([request.latitude, request.longitude], {icon: L.icon({iconUrl: iconUrl, iconSize: [25, 41]})})
-                        .addTo(map)
-                        .bindPopup(`<b>Request from:</b> ${request.citizen_name}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_type}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`);
-                });
+                    if (vehicle.request_id) {
+                        const request = data.requests.find(r => r.id === vehicle.request_id);
+                        if (request) {
+                            const requestIconColor = getMarkerColor(request.status);
+                            const requestMarker = L.marker([request.latitude, request.longitude], {
+                                icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${requestIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                            })
+                            .bindPopup(`<b>Request from:</b> ${request.citizen_name}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_type}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`)
+                            .addTo(map);
 
-                // Add offer markers
-                data.offers.forEach(offer => {
-                    var iconUrl = offer.status === 'completed' ? 'completed_offer_icon.png' : 'pending_offer_icon.png';
-                    L.marker([offer.latitude, offer.longitude], {icon: L.icon({iconUrl: iconUrl, iconSize: [25, 41]})})
-                        .addTo(map)
-                        .bindPopup(`<b>Offer from:</b> ${offer.citizen_name}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_type}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`);
+                            requestMarkers.push({
+                                marker: requestMarker,
+                                request: request
+                            });
+                            
+                            if (document.getElementById('showLines').checked) {
+                                const line = L.polyline([
+                                    [vehicle.latitude, vehicle.longitude],
+                                    [request.latitude, request.longitude]
+                                ], {color: 'blue'}).addTo(map);
+
+                                lines.push({
+                                    line: line,
+                                    vehicle: vehicle,
+                                    request: request
+                                });
+                            }
+                        }
+                    }
+                    
+                    if (vehicle.offer_id) {
+                        const offer = data.offers.find(o => o.id === vehicle.offer_id);
+                        if (offer) {
+                            const offerIconColor = getMarkerColor(offer.status);
+                            const offerMarker = L.marker([offer.latitude, offer.longitude], {
+                                icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${offerIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                            })
+                            .bindPopup(`<b>Offer from:</b> ${offer.citizen_name}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_type}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`)
+                            .addTo(map);
+
+                            offerMarkers.push({
+                                marker: offerMarker,
+                                offer: offer
+                            });
+                            
+                            if (document.getElementById('showLines').checked) {
+                                const line = L.polyline([
+                                    [vehicle.latitude, vehicle.longitude],
+                                    [offer.latitude, offer.longitude]
+                                ], {color: 'green'}).addTo(map);
+
+                                lines.push({
+                                    line: line,
+                                    vehicle: vehicle,
+                                    offer: offer
+                                });
+                            }
+                        }
+                    }
                 });
 
                 // Add base marker
@@ -113,6 +168,84 @@
                     }
                 });
             });
+
+        function getMarkerColor(status) {
+            switch (status) {
+                case 'pending':
+                    return 'yellow';
+                case 'active':
+                    return 'orange';
+                case 'completed':
+                    return 'green';
+                default:
+                    return 'grey';
+            }
+        }
+
+        // Filter functionality
+        document.getElementById('showPendingRequests').addEventListener('change', function () {
+            updateMarkers();
+        });
+
+        document.getElementById('showActiveRequests').addEventListener('change', function () {
+            updateMarkers();
+        });
+
+        document.getElementById('showOffers').addEventListener('change', function () {
+            updateMarkers();
+        });
+
+        document.getElementById('showActiveVehicles').addEventListener('change', function () {
+            updateMarkers();
+        });
+
+        document.getElementById('showInactiveVehicles').addEventListener('change', function () {
+            updateMarkers();
+        });
+
+        document.getElementById('showLines').addEventListener('change', function () {
+            updateLines();
+        });
+
+        function updateMarkers() {
+            vehicleMarkers.forEach(v => {
+                if (document.getElementById('showActiveVehicles').checked && v.vehicle.active) {
+                    v.marker.addTo(map);
+                } else if (document.getElementById('showInactiveVehicles').checked && !v.vehicle.active) {
+                    v.marker.addTo(map);
+                } else {
+                    map.removeLayer(v.marker);
+                }
+            });
+
+            requestMarkers.forEach(r => {
+                if (document.getElementById('showPendingRequests').checked && r.request.status === 'pending') {
+                    r.marker.addTo(map);
+                } else if (document.getElementById('showActiveRequests').checked && r.request.status === 'active') {
+                    r.marker.addTo(map);
+                } else {
+                    map.removeLayer(r.marker);
+                }
+            });
+
+            offerMarkers.forEach(o => {
+                if (document.getElementById('showOffers').checked) {
+                    o.marker.addTo(map);
+                } else {
+                    map.removeLayer(o.marker);
+                }
+            });
+        }
+
+        function updateLines() {
+            lines.forEach(l => {
+                if (document.getElementById('showLines').checked) {
+                    l.line.addTo(map);
+                } else {
+                    map.removeLayer(l.line);
+                }
+            });
+        }
     </script>
 </body>
 </html>
