@@ -4,15 +4,32 @@ CREATE DATABASE IF NOT EXISTS web;
 -- Χρήση της βάσης δεδομένων
 USE web;
 
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('administrator', 'rescuer', 'citizen') NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15) NOT NULL,
+    latitude DECIMAL(9, 6),  -- Πλάτος
+    longitude DECIMAL(9, 6), -- Μήκος
+    -- Πρόσθετα πεδία που χρησιμοποιείτε για τους χρήστες
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Recreate vehicles table with rescuer_id foreign key
 CREATE TABLE vehicles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
     cargo VARCHAR(255),
     status ENUM('available', 'busy', 'unavailable') DEFAULT 'available',
     latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
-    longitude DECIMAL(11, 8)  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    rescuer_id INT,  -- Foreign key to link the vehicle to the rescuer (user)
+    FOREIGN KEY (rescuer_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Recreate requests table
 CREATE TABLE requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     citizen_name VARCHAR(255) NOT NULL,
@@ -21,14 +38,14 @@ CREATE TABLE requests (
     item VARCHAR(255) NOT NULL,
     quantity INT NOT NULL,
     status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
-    vehicle_id INT,  -- Ξένη κλείδα προς τον πίνακα vehicles
+    vehicle_id INT,  -- Foreign key to link the request to a vehicle
     assignment_date DATETIME,
     latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
     longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
     CONSTRAINT fk_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
 
-
+-- Recreate offers table
 CREATE TABLE offers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     citizen_name VARCHAR(255) NOT NULL,
@@ -37,25 +54,13 @@ CREATE TABLE offers (
     item VARCHAR(255) NOT NULL,
     quantity INT NOT NULL,
     status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
-    vehicle_id INT,  -- Ξένη κλείδα προς τον πίνακα vehicles
+    vehicle_id INT,  -- Foreign key to link the offer to a vehicle
     assignment_date DATETIME,
     latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
     longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
     CONSTRAINT fk_offer_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
 
-
--- Δημιουργία του πίνακα για τους χρήστες
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('administrator', 'rescuer', 'citizen') NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(15) NOT NULL,
-    location POINT,  -- Αποθήκευση γεωγραφικής θέσης
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,4 +102,17 @@ CREATE TABLE IF NOT EXISTS announcement_items (
     FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE
 );
+CREATE TABLE vehicle_loads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vehicle_id INT,
+    item_id INT,
+    quantity INT,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    FOREIGN KEY (item_id) REFERENCES inventory(id),
+    UNIQUE KEY (vehicle_id, item_id)
+);
+select * from users;
 
+
+INSERT INTO vehicles (username, cargo, status, latitude, longitude, rescuer_id) 
+VALUES ('test_user', 'Test cargo', 'available', 37.774929, -122.419418, 2);
