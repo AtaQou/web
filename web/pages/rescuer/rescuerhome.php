@@ -17,6 +17,7 @@ include '../../includes/db_connect.php';
     <nav>
         <ul>
             <li><a href="rescuer_load_management/manage_cargo.html">Manage Cargo</a></li>
+            <li><a href="view_map/rescuer_map_view.html">View Map</a></li>
                 <!-- Add other admin pages here -->
         </ul>
     </nav>
