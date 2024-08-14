@@ -2,6 +2,9 @@
 // Include the database connection
 include '../../includes/db_connect.php';
 
+// Start the session
+session_start();
+
 // Check if the form was submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
@@ -16,12 +19,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Check if the password matches
         if ($password === $user['password_hash']) {
             // Successful login
-            session_start();
             $_SESSION['username'] = $username;
             $_SESSION['role'] = $user['role']; // Save the user's role in the session
-            echo "Login successful. Welcome, " . htmlspecialchars($user['name']) . "!";
-            // Redirect to dashboard or another page
-            header("Location: ../admin/adminhome.php");
+            $_SESSION['user_id'] = $user['id']; // Save user_id in the session
+            
+            // Redirect based on user role
+            if ($user['role'] === 'administrator') {
+                header("Location: ../admin/adminhome.php");
+            } elseif ($user['role'] === 'rescuer') {
+                header("Location: ../rescuer/rescuerhome.php");
+            } else {
+                echo "Invalid user role.";
+                exit;
+            }
             exit;
         } else {
             echo "Incorrect password.";

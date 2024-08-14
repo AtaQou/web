@@ -1,5 +1,6 @@
 <?php
 include '../../../includes/db_connect.php';
+include '../../../includes/admin_access.php';
 
 // Fetch vehicles along with their assigned requests and offers
 $vehicles_query = "

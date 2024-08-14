@@ -8,8 +8,19 @@ if (isset($data['latitude']) && isset($data['longitude'])) {
     $longitude = $data['longitude'];
 
     try {
-        // Insert new base location into the database
-        $stmt = $conn->prepare("INSERT INTO base_location (latitude, longitude) VALUES (:latitude, :longitude)");
+        // Check if a base location already exists
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM base_location");
+        $stmt->execute();
+        $count = $stmt->fetchColumn();
+
+        if ($count > 0) {
+            // Update the existing base location
+            $stmt = $conn->prepare("UPDATE base_location SET latitude = :latitude, longitude = :longitude");
+        } else {
+            // Insert a new base location if none exists
+            $stmt = $conn->prepare("INSERT INTO base_location (latitude, longitude) VALUES (:latitude, :longitude)");
+        }
+
         $stmt->bindParam(':latitude', $latitude);
         $stmt->bindParam(':longitude', $longitude);
         $stmt->execute();
