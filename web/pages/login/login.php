@@ -28,6 +28,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 header("Location: ../admin/adminhome.php");
             } elseif ($user['role'] === 'rescuer') {
                 header("Location: ../rescuer/rescuerhome.php");
+            } elseif ($user['role'] === 'citizen') {  // Add condition for citizen
+                header("Location: ../citizen/citizenhome.php");  // Redirect to citizen home
             } else {
                 echo "Invalid user role.";
                 exit;

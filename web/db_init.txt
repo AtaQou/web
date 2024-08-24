@@ -6,7 +6,7 @@ USE web;
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(100) NOT NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('administrator', 'rescuer', 'citizen') NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -81,38 +81,44 @@ CREATE TABLE vehicle_loads (
 
 CREATE TABLE IF NOT EXISTS offers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    citizen_name VARCHAR(255) NOT NULL,
-    citizen_phone VARCHAR(20) NOT NULL,
-    offer_date DATETIME NOT NULL,
-    item_id INT NOT NULL,  -- Changed from item to item_id
-    quantity INT NOT NULL,
-    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
-    vehicle_id INT,  -- Foreign key to link the offer to a vehicle
-    assignment_date DATETIME,
-    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
-    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
-    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE,
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
-    );
-    
-    CREATE TABLE IF NOT EXISTS requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    citizen_name VARCHAR(255) NOT NULL,
-    citizen_phone VARCHAR(20) NOT NULL,
-    request_date DATETIME NOT NULL,
-    item_id INT NOT NULL,  -- Changed from item to item_id
-    quantity INT NOT NULL,
-    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
-    vehicle_id INT,  -- Foreign key to link the request to a vehicle
-    assignment_date DATETIME,
-    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
-    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    citizen_username VARCHAR(255) NOT NULL,  -- Αναφορά στον χρήστη που έκανε την προσφορά
+    offer_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Ημερομηνία προσφοράς
+    announcement_id INT NOT NULL,  -- Αναφορά στην ανακοίνωση
+    item_id INT NOT NULL,  -- Το αντικείμενο που προσφέρεται
+    quantity INT NOT NULL,  -- Η ποσότητα που προσφέρεται
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',  -- Κατάσταση προσφοράς
+    vehicle_id INT,  -- Ξένο κλειδί για το όχημα που αναλαμβάνει την προσφορά (εάν ισχύει)
+    assignment_date DATETIME,  -- Ημερομηνία ανάθεσης (εάν ισχύει)
+    latitude DECIMAL(10, 8),  -- Συντεταγμένες για τον χρήστη
+    longitude DECIMAL(11, 8),  -- Συντεταγμένες για τον χρήστη
+    FOREIGN KEY (citizen_username) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
+
+    
+    DROP TABLE IF EXISTS offers;
+
+CREATE TABLE IF NOT EXISTS requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    citizen_username VARCHAR(100) NOT NULL,  -- Reference to users.username
+    request_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    item_id INT NOT NULL,  -- Foreign key reference to inventory
+    quantity INT NOT NULL,
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
+    vehicle_id INT,  -- Foreign key reference to vehicles
+    assignment_date DATETIME,
+    latitude DECIMAL(10, 8),  -- Latitude for the request location
+    longitude DECIMAL(11, 8),  -- Longitude for the request location
+    FOREIGN KEY (citizen_username) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+);
+
     
 select * from users;
-
+drop table requests; 
 
 INSERT INTO vehicles (username, cargo, status, latitude, longitude, rescuer_id) 
 VALUES ('test_user', 'Test cargo', 'available', 37.774929, -122.419418, 2);
@@ -128,3 +134,6 @@ select * from offers;
 select * from vehicle_loads;
 select * from requests;
 select * from vehicles;
+select * from announcements;
+select * from announcement_items where announcement_id=1;
+delete from offers where citizen_username='citizen2';

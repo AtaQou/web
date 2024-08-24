@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make a New Request</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+    <h2>Create a New Request</h2>
+    
+    <!-- Φόρμα για τη δημιουργία αιτήματος -->
+    <form id="requestForm">
+        <label for="category">Category:</label>
+        <select id="category" name="category" required>
+            <!-- Categories θα φορτωθούν μέσω AJAX -->
+        </select>
+
+        <label for="item_id">Item:</label>
+        <select id="item_id" name="item_id" required>
+            <!-- Items θα φορτωθούν μέσω AJAX ανάλογα με την επιλεγμένη κατηγορία -->
+        </select>
+
+        <label for="number_of_people">Number of People:</label>
+        <input type="number" id="number_of_people" name="number_of_people" min="1" required>
+
+        <input type="hidden" id="latitude" name="latitude" value="">
+        <input type="hidden" id="longitude" name="longitude" value="">
+
+        <input type="submit" value="Submit Request">
+    </form>
+
+    <h2>Your Request History</h2>
+    <div id="requestHistory">
+        <!-- Το ιστορικό αιτημάτων θα εμφανιστεί εδώ μέσω AJAX -->
+    </div>
+
+    <script>
+        // Λήψη κατηγοριών μέσω AJAX
+        function fetchCategories() {
+            fetch('fetch_categories.php')
+                .then(response => response.json())
+                .then(data => {
+                    var categorySelect = document.getElementById('category');
+                    categorySelect.innerHTML = '<option value="">Select a category</option>';
+                    data.forEach(category => {
+                        var option = document.createElement('option');
+                        option.value = category.id;
+                        option.text = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                });
+        }
+
+        // Λήψη αντικειμένων βάσει κατηγορίας
+        document.getElementById('category').addEventListener('change', function () {
+            var categoryId = this.value;
+            fetch(`fetch_items.php?category_id=${categoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    var itemSelect = document.getElementById('item_id');
+                    itemSelect.innerHTML = '<option value="">Select an item</option>';
+                    data.forEach(item => {
+                        var option = document.createElement('option');
+                        option.value = item.id;
+                        option.text = item.name;
+                        itemSelect.appendChild(option);
+                    });
+                });
+        });
+
+        // Υποβολή φόρμας μέσω AJAX
+        document.getElementById('requestForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            fetch('create_request.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(result => {
+                alert(result);
+                loadRequestHistory();  // Φόρτωση του ιστορικού αιτημάτων μετά την υποβολή
+            });
+        });
+
+        // Φόρτωση ιστορικού αιτημάτων μέσω AJAX
+        function loadRequestHistory() {
+            fetch('fetch_requests.php')
+                .then(response => response.json())
+                .then(data => {
+                    var historyDiv = document.getElementById('requestHistory');
+                    historyDiv.innerHTML = '';
+
+                    if (data.length > 0) {
+                        data.forEach(request => {
+                            var requestDiv = document.createElement('div');
+                            requestDiv.innerHTML = `
+                                <strong>Item:</strong> ${request.item_name}<br>
+                                <strong>Status:</strong> ${request.status}<br>
+                                <strong>Quantity:</strong> ${request.quantity}<br>
+                                <strong>Date:</strong> ${request.request_date}<br><hr>
+                            `;
+                            historyDiv.appendChild(requestDiv);
+                        });
+                    } else {
+                        historyDiv.innerHTML = '<p>No requests found.</p>';
+                    }
+                });
+        }
+
+        // Κλήση για κατηγορίες και ιστορικό αιτημάτων κατά τη φόρτωση της σελίδας
+        window.onload = function() {
+            fetchCategories();
+            loadRequestHistory();
+        };
+    </script>
+</body>
+</html>
