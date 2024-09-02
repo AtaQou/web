@@ -35,7 +35,7 @@ $conn = null; // Close the database connection
             <li><a href="../dashboard.php">Dashboard</a></li>
             <li><a href="stats/stats.php">View Stats</a></li>
             <li><a href="create_rescuer/create_rescuer.php">Add A New Rescuer</a></li>
-            <li><a href="create_announcement/create_announcement.php">Add New Announcement</a></li>
+            <li><a href="create_announcement/create_announcement.html">Add New Announcement</a></li>
             <!-- Add other admin pages here -->
         </ul>
     </nav>

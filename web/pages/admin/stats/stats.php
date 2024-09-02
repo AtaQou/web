@@ -10,21 +10,34 @@ try {
     // Fetch counts of requests and offers based on the selected period
     $stmt = $conn->prepare("
         SELECT 
-            SUM(CASE WHEN type = 'request' AND status = 'pending' THEN 1 ELSE 0 END) AS new_requests,
-            SUM(CASE WHEN type = 'offer' AND status = 'pending' THEN 1 ELSE 0 END) AS new_offers,
-            SUM(CASE WHEN type = 'request' AND status = 'completed' THEN 1 ELSE 0 END) AS completed_requests,
-            SUM(CASE WHEN type = 'offer' AND status = 'completed' THEN 1 ELSE 0 END) AS completed_offers
-        FROM (
-            SELECT 'request' AS type, status, request_date AS date FROM requests
-            UNION ALL
-            SELECT 'offer' AS type, status, offer_date AS date FROM offers
-        ) AS combined
-        WHERE date BETWEEN :start_date AND :end_date
+            -- Count new and completed requests
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS new_requests,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_requests
+        FROM requests
+        WHERE request_date BETWEEN :start_date AND :end_date
     ");
     $stmt->bindParam(':start_date', $startDate);
     $stmt->bindParam(':end_date', $endDate);
     $stmt->execute();
-    $data = $stmt->fetch(PDO::FETCH_ASSOC);
+    $requestsData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Fetch counts of offers
+    $stmt = $conn->prepare("
+        SELECT 
+            -- Count new and completed offers
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS new_offers,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_offers
+        FROM offers
+        WHERE offer_date BETWEEN :start_date AND :end_date
+    ");
+    $stmt->bindParam(':start_date', $startDate);
+    $stmt->bindParam(':end_date', $endDate);
+    $stmt->execute();
+    $offersData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Merge request and offer data
+    $data = array_merge($requestsData, $offersData);
+
 } catch (PDOException $e) {
     echo 'Database error: ' . $e->getMessage();
     exit;
