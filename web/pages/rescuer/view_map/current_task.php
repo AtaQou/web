@@ -16,11 +16,11 @@ $vehicle = $vehicle_stmt->fetch(PDO::FETCH_ASSOC);
 $tasks = [];
 if ($vehicle) {
     $tasks_query = "
-        SELECT id AS request_id, 'request' AS type, citizen_name, citizen_phone, request_date, item_id, quantity, status AS request_status 
+        SELECT id AS request_id, 'request' AS type, citizen_username, request_date, item_id, quantity, status AS request_status 
         FROM requests 
         WHERE vehicle_id = :vehicle_id AND status = 'active'
         UNION ALL
-        SELECT id AS offer_id, 'offer' AS type, NULL AS citizen_name, NULL AS citizen_phone, offer_date AS request_date, item_id AS item_id, quantity AS quantity, status AS offer_status
+        SELECT id AS offer_id, 'offer' AS type, NULL AS citizen_username, offer_date AS request_date, item_id AS item_id, quantity AS quantity, status AS offer_status
         FROM offers 
         WHERE vehicle_id = :vehicle_id AND status = 'active'";
     $tasks_stmt = $conn->prepare($tasks_query);

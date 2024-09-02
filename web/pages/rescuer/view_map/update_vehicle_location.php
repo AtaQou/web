@@ -16,15 +16,24 @@ if ($vehicle) {
     $longitude = $input['longitude'];
 
     // Update vehicle's location
-    $update_query = "UPDATE vehicles SET latitude = :latitude, longitude = :longitude WHERE id = :id";
-    $update_stmt = $conn->prepare($update_query);
-    $update_stmt->execute([
+    $update_vehicle_query = "UPDATE vehicles SET latitude = :latitude, longitude = :longitude WHERE id = :id";
+    $update_vehicle_stmt = $conn->prepare($update_vehicle_query);
+    $update_vehicle_stmt->execute([
         'latitude' => $latitude,
         'longitude' => $longitude,
         'id' => $vehicle['id']
     ]);
 
-    echo "Vehicle location updated.";
+    // Update rescuer's location
+    $update_rescuer_query = "UPDATE users SET latitude = :latitude, longitude = :longitude WHERE id = :rescuer_id";
+    $update_rescuer_stmt = $conn->prepare($update_rescuer_query);
+    $update_rescuer_stmt->execute([
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'rescuer_id' => $user_id
+    ]);
+
+    echo "Vehicle and rescuer location updated.";
 } else {
     echo "No vehicle found.";
 }

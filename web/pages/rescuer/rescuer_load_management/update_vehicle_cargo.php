@@ -81,32 +81,46 @@ if ($action) {
         $vehicle_id = $vehicle['id'];
 
         if ($action === 'load' && $item_id && $quantity) {
-            // Load item into vehicle and decrease the inventory quantity
-            $stmt = $conn->prepare("
-                INSERT INTO vehicle_loads (vehicle_id, item_id, quantity)
-                VALUES (:vehicle_id, :item_id, :quantity)
-                ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
-            ");
-            $stmt->bindParam(':vehicle_id', $vehicle_id);
-            $stmt->bindParam(':item_id', $item_id);
-            $stmt->bindParam(':quantity', $quantity);
-            $stmt->execute();
+    // Check if there is enough quantity in the inventory
+    $stmt = $conn->prepare("
+        SELECT quantity 
+        FROM inventory 
+        WHERE id = :item_id
+    ");
+    $stmt->bindParam(':item_id', $item_id);
+    $stmt->execute();
+    $inventoryItem = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Decrease the inventory quantity
-            $stmt = $conn->prepare("
-                UPDATE inventory
-                SET quantity = quantity - :quantity
-                WHERE id = :item_id AND quantity >= :quantity
-            ");
-            $stmt->bindParam(':quantity', $quantity);
-            $stmt->bindParam(':item_id', $item_id);
-            $stmt->execute();
+    // Check if the inventory has enough quantity
+    if ($inventoryItem && $inventoryItem['quantity'] >= $quantity) {
+        // Load item into vehicle and decrease the inventory quantity
+        $stmt = $conn->prepare("
+            INSERT INTO vehicle_loads (vehicle_id, item_id, quantity)
+            VALUES (:vehicle_id, :item_id, :quantity)
+            ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+        ");
+        $stmt->bindParam(':vehicle_id', $vehicle_id);
+        $stmt->bindParam(':item_id', $item_id);
+        $stmt->bindParam(':quantity', $quantity);
+        $stmt->execute();
 
-            if ($stmt->rowCount() === 0) {
-                echo json_encode(['error' => 'Not enough items in inventory or invalid item.']);
-            } else {
-                echo json_encode(['success' => 'Item loaded successfully.']);
-            }
+        // Decrease the inventory quantity
+        $stmt = $conn->prepare("
+            UPDATE inventory
+            SET quantity = quantity - :quantity
+            WHERE id = :item_id
+        ");
+        $stmt->bindParam(':quantity', $quantity);
+        $stmt->bindParam(':item_id', $item_id);
+        $stmt->execute();
+
+        echo json_encode(['success' => 'Item loaded successfully.']);
+    } else {
+        // Error if not enough items in inventory
+        echo json_encode(['error' => 'Not enough items in inventory or invalid item.']);
+    }
+}
+
         } elseif ($action === 'unload_all') {
             // Begin transaction
             $conn->beginTransaction();

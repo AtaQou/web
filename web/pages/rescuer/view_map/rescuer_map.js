@@ -11,6 +11,19 @@ var requestMarkers = [];
 var offerMarkers = [];
 var lines = [];
 
+// Fetch base location and add marker to map
+fetch('fetch_base_location.php')
+    .then(response => response.json())
+    .then(baseData => {
+        if (baseData.latitude && baseData.longitude) {
+            // Add base marker
+            L.marker([baseData.latitude, baseData.longitude], {icon: L.icon({iconUrl: 'path_to_base_icon.png', iconSize: [25, 41]})})
+                .addTo(map)
+                .bindPopup('<b>Base Location</b>');
+        }
+    });
+
+
 fetch('fetch_rescuer_map_data.php')
     .then(response => response.json())
     .then(data => {
@@ -19,49 +32,45 @@ fetch('fetch_rescuer_map_data.php')
             vehicleMarker = L.marker([data.vehicle.latitude, data.vehicle.longitude], {draggable: false})
                 .addTo(map)
                 .bindPopup('<b>My Vehicle</b>');
-        }
+        }// Add request markers
+data.requests.forEach(request => {
+    var color = request.status === 'pending' ? 'black' : 'red';
+    var marker = L.marker([request.latitude, request.longitude], {
+        icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${color}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+    })
+    .bindPopup(`
+        <b>Request from:</b> ${request.citizen_username || 'Unknown'}<br>
+        <b>Item:</b> ${request.item || 'N/A'}<br>
+        <b>Quantity:</b> ${request.quantity || 'N/A'}<br>
+        <b>Request Date:</b> ${request.request_date || 'N/A'}<br>
+        <button onclick="assignRequest(${request.id})">Take Request</button><br>
+        <button onclick="completeTask('request', ${request.id})" ${distanceToTask(request.latitude, request.longitude) > 50 ? 'disabled' : ''}>Complete</button><br>
+        <button onclick="cancelTask('request', ${request.id})">Cancel</button>
+    `)
+    .addTo(map);
 
-        // Add request markers
-        data.requests.forEach(request => {
-            var color = request.status === 'pending' ? 'black' : 'red';
-            var marker = L.marker([request.latitude, request.longitude], {
-                icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${color}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
-            })
-            .bindPopup(`
-                <b>Request from:</b> ${request.citizen_name}<br>
-                <b>Phone:</b> ${request.citizen_phone}<br>
-                <b>Item:</b> ${request.item}<br>
-                <b>Quantity:</b> ${request.quantity}<br>
-                <b>Request Date:</b> ${request.request_date}<br>
-                <button onclick="assignRequest(${request.id})">Take Request</button><br>
-                <button onclick="completeTask('request', ${request.id})" ${distanceToTask(request.latitude, request.longitude) > 50 ? 'disabled' : ''}>Complete</button><br>
-                <button onclick="cancelTask('request', ${request.id})">Cancel</button>
-            `)
-            .addTo(map);
+    requestMarkers.push({ marker, request });
+});
 
-            requestMarkers.push({ marker, request });
-        });
+// Add offer markers
+data.offers.forEach(offer => {
+    var color = offer.status === 'pending' ? 'yellow' : 'orange';
+    var marker = L.marker([offer.latitude, offer.longitude], {
+        icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${color}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+    })
+    .bindPopup(`
+        <b>Offer from:</b> ${offer.citizen_username || 'Unknown'}<br>
+        <b>Item:</b> ${offer.item || 'N/A'}<br>
+        <b>Quantity:</b> ${offer.quantity || 'N/A'}<br>
+        <b>Offer Date:</b> ${offer.offer_date || 'N/A'}<br>
+        <button onclick="assignOffer(${offer.id})">Take Offer</button><br>
+        <button onclick="completeTask('offer', ${offer.id})" ${distanceToTask(offer.latitude, offer.longitude) > 50 ? 'disabled' : ''}>Complete</button><br>
+        <button onclick="cancelTask('offer', ${offer.id})">Cancel</button>
+    `)
+    .addTo(map);
 
-        // Add offer markers
-        data.offers.forEach(offer => {
-            var color = offer.status === 'pending' ? 'yellow' : 'orange';
-            var marker = L.marker([offer.latitude, offer.longitude], {
-                icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${color}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
-            })
-            .bindPopup(`
-                <b>Offer from:</b> ${offer.citizen_name}<br>
-                <b>Phone:</b> ${offer.citizen_phone}<br>
-                <b>Item:</b> ${offer.item}<br>
-                <b>Quantity:</b> ${offer.quantity}<br>
-                <b>Offer Date:</b> ${offer.offer_date}<br>
-                <button onclick="assignOffer(${offer.id})">Take Offer</button><br>
-                <button onclick="completeTask('offer', ${offer.id})" ${distanceToTask(offer.latitude, offer.longitude) > 50 ? 'disabled' : ''}>Complete</button><br>
-                <button onclick="cancelTask('offer', ${offer.id})">Cancel</button>
-            `)
-            .addTo(map);
-
-            offerMarkers.push({ marker, offer });
-        });
+    offerMarkers.push({ marker, offer });
+});
 
         // Add lines connecting the vehicle to assigned requests or offers
         if (document.getElementById('showLines').checked) {
@@ -159,8 +168,12 @@ function completeTask(type, taskId) {
     })
     .then(response => response.text())
     .then(data => {
-        alert(`${type.charAt(0).toUpperCase() + type.slice(1)} task has been completed.`);
+        alert(data); // Εμφανίζει το ακριβές μήνυμα που επιστρέφει η PHP
         location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while completing the task.');
     });
 }
 
@@ -212,8 +225,7 @@ function loadCurrentTasks() {
                     content = `
                         <div>
                             <h3>Request</h3>
-                            <p><b>From:</b> ${task.citizen_name}</p>
-                            <p><b>Phone:</b> ${task.citizen_phone}</p>
+                            <p><b>From:</b> ${task.citizen_username}</p>
                             <p><b>Date:</b> ${task.request_date}</p>
                             <p><b>Item:</b> ${task.item_id}</p>
                             <p><b>Quantity:</b> ${task.quantity}</p>
