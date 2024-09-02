@@ -35,24 +35,25 @@ if ($action) {
 
         $latitude = $user['latitude'];
         $longitude = $user['longitude'];
-       // Fetch base location
 
-       $stmt = $conn->prepare("
-       SELECT latitude, longitude
-       FROM base_location
-       WHERE id = 1
-   ");
-   $stmt->execute();
-   $base_location = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Fetch base location
+        $stmt = $conn->prepare("
+            SELECT latitude, longitude
+            FROM base_location
+            WHERE id = 1
+        ");
+        $stmt->execute();
+        $base_location = $stmt->fetch(PDO::FETCH_ASSOC);
 
-   if (!$base_location) {
-       echo json_encode(['error' => 'Base location not found.']);
-       exit;
-   }
+        if (!$base_location) {
+            echo json_encode(['error' => 'Base location not found.']);
+            exit;
+        }
 
-   $latitude_base = $base_location['latitude'];
-   $longitude_base = $base_location['longitude'];
+        $latitude_base = $base_location['latitude'];
+        $longitude_base = $base_location['longitude'];
 
+        // Calculate distance
         $distance = calculate_distance($latitude, $longitude, $latitude_base, $longitude_base);
 
         if ($distance > 100) { // 100 meters
@@ -61,7 +62,7 @@ if ($action) {
                 'distance' => number_format($distance, 2) // Format distance to 2 decimal places
             ]);
             exit;
-        }        
+        }
 
         // Fetch the vehicle assigned to the current rescuer
         $stmt = $conn->prepare("
@@ -81,46 +82,43 @@ if ($action) {
         $vehicle_id = $vehicle['id'];
 
         if ($action === 'load' && $item_id && $quantity) {
-    // Check if there is enough quantity in the inventory
-    $stmt = $conn->prepare("
-        SELECT quantity 
-        FROM inventory 
-        WHERE id = :item_id
-    ");
-    $stmt->bindParam(':item_id', $item_id);
-    $stmt->execute();
-    $inventoryItem = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Check if there is enough quantity in the inventory
+            $stmt = $conn->prepare("
+                SELECT quantity
+                FROM inventory
+                WHERE id = :item_id
+            ");
+            $stmt->bindParam(':item_id', $item_id);
+            $stmt->execute();
+            $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Check if the inventory has enough quantity
-    if ($inventoryItem && $inventoryItem['quantity'] >= $quantity) {
-        // Load item into vehicle and decrease the inventory quantity
-        $stmt = $conn->prepare("
-            INSERT INTO vehicle_loads (vehicle_id, item_id, quantity)
-            VALUES (:vehicle_id, :item_id, :quantity)
-            ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
-        ");
-        $stmt->bindParam(':vehicle_id', $vehicle_id);
-        $stmt->bindParam(':item_id', $item_id);
-        $stmt->bindParam(':quantity', $quantity);
-        $stmt->execute();
+            if (!$inventory || $inventory['quantity'] < $quantity) {
+                echo json_encode(['error' => 'Not enough items in inventory or invalid item.']);
+                exit;
+            }
 
-        // Decrease the inventory quantity
-        $stmt = $conn->prepare("
-            UPDATE inventory
-            SET quantity = quantity - :quantity
-            WHERE id = :item_id
-        ");
-        $stmt->bindParam(':quantity', $quantity);
-        $stmt->bindParam(':item_id', $item_id);
-        $stmt->execute();
+            // Load item into vehicle and decrease the inventory quantity
+            $stmt = $conn->prepare("
+                INSERT INTO vehicle_loads (vehicle_id, item_id, quantity)
+                VALUES (:vehicle_id, :item_id, :quantity)
+                ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+            ");
+            $stmt->bindParam(':vehicle_id', $vehicle_id);
+            $stmt->bindParam(':item_id', $item_id);
+            $stmt->bindParam(':quantity', $quantity);
+            $stmt->execute();
 
-        echo json_encode(['success' => 'Item loaded successfully.']);
-    } else {
-        // Error if not enough items in inventory
-        echo json_encode(['error' => 'Not enough items in inventory or invalid item.']);
-    }
-}
+            // Decrease the inventory quantity
+            $stmt = $conn->prepare("
+                UPDATE inventory
+                SET quantity = quantity - :quantity
+                WHERE id = :item_id
+            ");
+            $stmt->bindParam(':quantity', $quantity);
+            $stmt->bindParam(':item_id', $item_id);
+            $stmt->execute();
 
+            echo json_encode(['success' => 'Item loaded successfully.']);
         } elseif ($action === 'unload_all') {
             // Begin transaction
             $conn->beginTransaction();
