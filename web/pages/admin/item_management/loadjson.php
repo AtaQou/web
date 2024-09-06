@@ -1,93 +1,71 @@
 <?php
-session_start();
+
 include '../../../includes/db_connect.php';
 include '../../../includes/admin_access.php';
 
-if (!isset($_SESSION['decoded_data'])) {
-    die('Error: No data to display.');
-}
+$response = ['status' => 'error', 'message' => 'Error loading data'];
 
-$data = $_SESSION['decoded_data'];
+if (isset($_SESSION['decoded_data'])) {
+    $data = $_SESSION['decoded_data'];
 
-// Fetch existing categories from the database
-$existing_categories_stmt = $conn->query("SELECT id FROM categories");
-$existing_categories = $existing_categories_stmt->fetchAll(PDO::FETCH_COLUMN);
-?>
+    try {
+        // Fetch existing categories from the database
+        $existing_categories_stmt = $conn->query("SELECT id FROM categories");
+        $existing_categories = $existing_categories_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Categories and Items</title>
-    <style>
-        .non-selectable {
-            color: lightgray;
+        $categories = [];
+        $items = [];
+
+        // Prepare categories data
+        if (isset($data['categories']) && is_array($data['categories'])) {
+            foreach ($data['categories'] as $category) {
+                $categories[] = [
+                    'id' => htmlspecialchars($category['id']),
+                    'name' => htmlspecialchars($category['category_name']),
+                    'selected' => in_array($category['id'], $existing_categories)
+                ];
+            }
         }
-    </style>
-</head>
-<body>
-    <h1>Select Categories and Items to Insert into Database</h1>
 
-    <?php
-    // Display session message if exists
-    if (isset($_SESSION['message'])) {
-        echo '<p>' . htmlspecialchars($_SESSION['message']) . '</p>';
-        unset($_SESSION['message']); // Clear the message after displaying it
-    }
-    ?>
+        // Get selected categories from query string
+        $selected_categories = $_GET['categories'] ?? [];
+        if (!is_array($selected_categories)) {
+            $selected_categories = [$selected_categories];
+        }
 
-    <form action="managecategory.php" method="post">
-        <h2>Categories</h2>
-        <?php if (isset($data['categories']) && is_array($data['categories'])): ?>
-            <?php foreach ($data['categories'] as $category): ?>
-                <input type="checkbox" name="selected_categories[]" value="<?= $category['id'] ?>"
-                    <?= in_array($category['id'], $existing_categories) ? 'checked disabled' : '' ?>>
-                <?= htmlspecialchars($category['category_name']) ?> (ID: <?= $category['id'] ?>)
-                <?= in_array($category['id'], $existing_categories) ? '(Already in DB)' : '' ?><br>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p>No categories available.</p>
-        <?php endif; ?>
-
-        <h2>Items</h2>
-        <?php if (isset($data['items']) && is_array($data['items'])): ?>
-            <?php 
-            // Separate selectable and non-selectable items
-            $selectable_items = [];
-            $non_selectable_items = [];
-
+        // Prepare items data based on selected categories
+        if (isset($data['items']) && is_array($data['items'])) {
             foreach ($data['items'] as $item) {
-                if (in_array($item['category'], $existing_categories)) {
-                    $selectable_items[] = $item;
-                } else {
-                    $non_selectable_items[] = $item;
+                if (empty($selected_categories) || in_array($item['category'], $selected_categories)) {
+                    $description = '';
+                    if (isset($item['details']) && is_array($item['details'])) {
+                        foreach ($item['details'] as $detail) {
+                            if (isset($detail['detail_name']) && isset($detail['detail_value'])) {
+                                $description .= htmlspecialchars($detail['detail_name']) . ': ' . htmlspecialchars($detail['detail_value']) . ', ';
+                            }
+                        }
+                        $description = rtrim($description, ', ');
+                    }
+
+                    $items[] = [
+                        'id' => htmlspecialchars($item['id']),
+                        'name' => htmlspecialchars($item['name']),
+                        'category' => htmlspecialchars($item['category']),
+                        'description' => $description ?: 'No description available'
+                    ];
                 }
             }
+        }
 
-            // Display selectable items first
-            foreach ($selectable_items as $item): ?>
-                <input type="checkbox" name="selected_items[]" value="<?= $item['id'] ?>">
-                <?= htmlspecialchars($item['name']) ?> (Category ID: <?= $item['category'] ?>): <?= htmlspecialchars($item['description']) ?><br>
-                Quantity: <input type="number" name="quantity_<?= $item['id'] ?>" min="1" value="1"><br>
-            <?php endforeach; ?>
+        $response['status'] = 'success';
+        $response['categories'] = $categories;
+        $response['items'] = $items;
+    } catch (PDOException $e) {
+        $response['message'] = 'Database error: ' . $e->getMessage();
+    }
+}
 
-            <!-- Display non-selectable items -->
-            <?php foreach ($non_selectable_items as $item): ?>
-                <span class="non-selectable">
-                    <?= htmlspecialchars($item['name']) ?> (Category ID: <?= $item['category'] ?>): <?= htmlspecialchars($item['description']) ?>
-                    <em>(Category not available)</em>
-                </span><br>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p>No items available.</p>
-        <?php endif; ?>
-
-        <input type="submit" value="Insert Selected Data">
-    </form>
-
-    <form action="manage.html" method="get">
-        <input type="submit" value="Back to Manage Page">
-    </form>
-</body>
-</html>
+header('Content-Type: application/json');
+echo json_encode($response);
+exit;
+?>

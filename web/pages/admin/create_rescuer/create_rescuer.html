@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Rescuer Account</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .error-message {
+            color: red;
+        }
+        .success-message {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Rescuer Account</h1>
+
+        <p id="response-message" class="error-message" style="display: none;"></p>
+
+        <form id="rescuer-form">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="text" id="phone" name="phone" required>
+            </div>
+            <button type="submit">Create Account</button>
+        </form>
+
+        <button class="back-button" onclick="window.location.href='../adminhome.php'">Back to Admin Home</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Handle form submission
+            $('#rescuer-form').on('submit', function(e) {
+                e.preventDefault();
+
+                // Clear previous messages
+                $('#response-message').hide().removeClass('success-message error-message');
+
+                // Send AJAX request to the PHP file
+                $.ajax({
+                    url: 'create_rescuer.php',
+                    method: 'POST',
+                    data: $(this).serialize(), // Serialize form data
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.error) {
+                            $('#response-message').text(response.error).addClass('error-message').show();
+                        } else if (response.success) {
+                            $('#response-message').text(response.success).addClass('success-message').show();
+                            $('#rescuer-form')[0].reset(); // Reset the form after success
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#response-message').text('An error occurred: ' + error).addClass('error-message').show();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
