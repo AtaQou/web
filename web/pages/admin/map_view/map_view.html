@@ -69,65 +69,50 @@
                         vehicle: vehicle
                     });
 
+                    // Connect vehicle with request and offer if available
                     if (vehicle.request_id) {
                         const request = data.requests.find(r => r.id === vehicle.request_id);
                         if (request) {
-                            const requestIconColor = getMarkerColor(request.status);
-                            const requestMarker = L.marker([request.latitude, request.longitude], {
-                                icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${requestIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
-                            })
-                            .bindPopup(`<b>Request from:</b> ${request.citizen_name}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_type}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`)
-                            .addTo(map);
-
-                            requestMarkers.push({
-                                marker: requestMarker,
-                                request: request
-                            });
-                            
-                            if (document.getElementById('showLines').checked) {
-                                const line = L.polyline([
-                                    [vehicle.latitude, vehicle.longitude],
-                                    [request.latitude, request.longitude]
-                                ], {color: 'blue'}).addTo(map);
-
-                                lines.push({
-                                    line: line,
-                                    vehicle: vehicle,
-                                    request: request
-                                });
-                            }
+                            createLine(vehicle, request, 'blue');
                         }
                     }
-                    
+
                     if (vehicle.offer_id) {
                         const offer = data.offers.find(o => o.id === vehicle.offer_id);
                         if (offer) {
-                            const offerIconColor = getMarkerColor(offer.status);
-                            const offerMarker = L.marker([offer.latitude, offer.longitude], {
-                                icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${offerIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
-                            })
-                            .bindPopup(`<b>Offer from:</b> ${offer.citizen_name}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_type}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`)
-                            .addTo(map);
-
-                            offerMarkers.push({
-                                marker: offerMarker,
-                                offer: offer
-                            });
-                            
-                            if (document.getElementById('showLines').checked) {
-                                const line = L.polyline([
-                                    [vehicle.latitude, vehicle.longitude],
-                                    [offer.latitude, offer.longitude]
-                                ], {color: 'green'}).addTo(map);
-
-                                lines.push({
-                                    line: line,
-                                    vehicle: vehicle,
-                                    offer: offer
-                                });
-                            }
+                            createLine(vehicle, offer, 'green');
                         }
                     }
+                });
+
+                // Add request markers
+                data.requests.forEach(request => {
+                    const requestIconColor = getMarkerColor(request.status);
+                    const requestMarker = L.marker([request.latitude, request.longitude], {
+                        icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${requestIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Request from:</b> ${request.citizen_username}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_id}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`)
+                    .addTo(map);
+
+                    requestMarkers.push({
+                        marker: requestMarker,
+                        request: request
+                    });
+                });
+
+                // Add offer markers
+                data.offers.forEach(offer => {
+                    const offerIconColor = getMarkerColor(offer.status);
+                    const offerMarker = L.marker([offer.latitude, offer.longitude], {
+                        icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${offerIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Offer from:</b> ${offer.citizen_username}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_id}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`)
+                    .addTo(map);
+
+                    offerMarkers.push({
+                        marker: offerMarker,
+                        offer: offer
+                    });
                 });
 
                 // Add base marker
@@ -137,6 +122,7 @@
                         .bindPopup('<b>Base Location</b>');
                 }
 
+                // Handle base location change
                 document.getElementById('changeBaseButton').addEventListener('click', function () {
                     if (baseMarker) {
                         baseMarker.dragging.enable();
@@ -167,6 +153,10 @@
                         });
                     }
                 });
+
+                // Initialize markers and lines based on current filter state
+                updateMarkers();
+                updateLines();
             });
 
         function getMarkerColor(status) {
@@ -182,31 +172,20 @@
             }
         }
 
-        // Filter functionality
-        document.getElementById('showPendingRequests').addEventListener('change', function () {
-            updateMarkers();
-        });
+        function createLine(start, end, color) {
+            const line = L.polyline([
+                [start.latitude, start.longitude],
+                [end.latitude, end.longitude]
+            ], {color: color}).addTo(map);
 
-        document.getElementById('showActiveRequests').addEventListener('change', function () {
-            updateMarkers();
-        });
+            lines.push({
+                line: line,
+                start: start,
+                end: end
+            });
+        }
 
-        document.getElementById('showOffers').addEventListener('change', function () {
-            updateMarkers();
-        });
-
-        document.getElementById('showActiveVehicles').addEventListener('change', function () {
-            updateMarkers();
-        });
-
-        document.getElementById('showInactiveVehicles').addEventListener('change', function () {
-            updateMarkers();
-        });
-
-        document.getElementById('showLines').addEventListener('change', function () {
-            updateLines();
-        });
-
+        // Update markers based on filters
         function updateMarkers() {
             vehicleMarkers.forEach(v => {
                 if (document.getElementById('showActiveVehicles').checked && v.vehicle.active) {
@@ -237,6 +216,7 @@
             });
         }
 
+        // Update lines based on filters
         function updateLines() {
             lines.forEach(l => {
                 if (document.getElementById('showLines').checked) {
@@ -246,6 +226,14 @@
                 }
             });
         }
+
+        // Event listeners for filter checkboxes
+        document.getElementById('showPendingRequests').addEventListener('change', updateMarkers);
+        document.getElementById('showActiveRequests').addEventListener('change', updateMarkers);
+        document.getElementById('showOffers').addEventListener('change', updateMarkers);
+        document.getElementById('showActiveVehicles').addEventListener('change', updateMarkers);
+        document.getElementById('showInactiveVehicles').addEventListener('change', updateMarkers);
+        document.getElementById('showLines').addEventListener('change', updateLines);
     </script>
 </body>
 </html>

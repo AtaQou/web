@@ -2,12 +2,23 @@
 include '../../../includes/db_connect.php';
 include '../../../includes/admin_access.php';
 
-// Fetch vehicles along with their assigned requests and offers
+// Fetch vehicles with their associated requests, offers, and cargo
 $vehicles_query = "
-    SELECT vehicles.*, requests.id AS request_id, offers.id AS offer_id
-    FROM vehicles
-    LEFT JOIN requests ON vehicles.id = requests.vehicle_id
-    LEFT JOIN offers ON vehicles.id = offers.vehicle_id";
+    SELECT 
+        v.id AS vehicle_id, 
+        v.username, 
+        v.status, 
+        v.latitude, 
+        v.longitude, 
+        r.id AS request_id, 
+        o.id AS offer_id, 
+        GROUP_CONCAT(CONCAT(i.name, ' ', vl.quantity) SEPARATOR ', ') AS cargo
+    FROM vehicles v
+    LEFT JOIN requests r ON v.id = r.vehicle_id AND r.status IN ('pending', 'active')
+    LEFT JOIN offers o ON v.id = o.vehicle_id AND o.status IN ('pending', 'active')
+    LEFT JOIN vehicle_loads vl ON v.id = vl.vehicle_id
+    LEFT JOIN inventory i ON vl.item_id = i.id
+    GROUP BY v.id, r.id, o.id";
 $vehicles_result = $conn->query($vehicles_query);
 $vehicles = [];
 while ($row = $vehicles_result->fetch(PDO::FETCH_ASSOC)) {
