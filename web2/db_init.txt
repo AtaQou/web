@@ -1,0 +1,148 @@
+-- Δημιουργία της βάσης δεδομένων
+CREATE DATABASE IF NOT EXISTS web;
+
+-- Χρήση της βάσης δεδομένων
+USE web;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('administrator', 'rescuer', 'citizen') NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15) NOT NULL,
+    latitude DECIMAL(9, 6),  -- Πλάτος
+    longitude DECIMAL(9, 6), -- Μήκος
+    -- Πρόσθετα πεδία που χρησιμοποιείτε για τους χρήστες
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Recreate vehicles table with rescuer_id foreign key
+CREATE TABLE vehicles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    cargo VARCHAR(255),
+    status ENUM('available', 'busy', 'unavailable') DEFAULT 'available',
+    latitude DECIMAL(10, 8),  -- Γεωγραφικό πλάτος για τον marker στο χάρτη
+    longitude DECIMAL(11, 8),  -- Γεωγραφικό μήκος για τον marker στο χάρτη
+    rescuer_id INT,  -- Foreign key to link the vehicle to the rescuer (user)
+    FOREIGN KEY (rescuer_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    quantity INT NOT NULL DEFAULT 0,
+    location POINT,  -- Location of the warehouse or vehicle
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+
+-- Creating a table for base location
+CREATE TABLE base_location (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    latitude DOUBLE,
+    longitude DOUBLE
+);
+
+CREATE TABLE IF NOT EXISTS announcements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS announcement_items (
+    announcement_id INT,
+    item_id INT,
+    PRIMARY KEY (announcement_id, item_id),
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE
+);
+CREATE TABLE vehicle_loads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vehicle_id INT,
+    item_id INT,
+    quantity INT,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    FOREIGN KEY (item_id) REFERENCES inventory(id),
+    UNIQUE KEY (vehicle_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    citizen_username VARCHAR(255) NOT NULL,  -- Αναφορά στον χρήστη που έκανε την προσφορά
+    offer_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Ημερομηνία προσφοράς
+    announcement_id INT NOT NULL,  -- Αναφορά στην ανακοίνωση
+    item_id INT NOT NULL,  -- Το αντικείμενο που προσφέρεται
+    quantity INT NOT NULL,  -- Η ποσότητα που προσφέρεται
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',  -- Κατάσταση προσφοράς
+    vehicle_id INT,  -- Ξένο κλειδί για το όχημα που αναλαμβάνει την προσφορά (εάν ισχύει)
+    assignment_date DATETIME,  -- Ημερομηνία ανάθεσης (εάν ισχύει)
+    latitude DECIMAL(10, 8),  -- Συντεταγμένες για τον χρήστη
+    longitude DECIMAL(11, 8),  -- Συντεταγμένες για τον χρήστη
+    FOREIGN KEY (citizen_username) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+);
+
+    
+    DROP TABLE IF EXISTS offers;
+
+CREATE TABLE IF NOT EXISTS requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    citizen_username VARCHAR(100) NOT NULL,  -- Reference to users.username
+    request_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    item_id INT NOT NULL,  -- Foreign key reference to inventory
+    quantity INT NOT NULL,
+    status ENUM('pending', 'active', 'completed') DEFAULT 'pending',
+    vehicle_id INT,  -- Foreign key reference to vehicles
+    assignment_date DATETIME,
+    latitude DECIMAL(10, 8),  -- Latitude for the request location
+    longitude DECIMAL(11, 8),  -- Longitude for the request location
+    FOREIGN KEY (citizen_username) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+);
+
+    
+select * from users;
+drop table requests; 
+
+INSERT INTO vehicles (username, cargo, status, latitude, longitude, rescuer_id) 
+VALUES ('test_user', 'Test cargo', 'available', 37.774929, -122.419418, 2);
+
+-- Insert an offer for water
+INSERT INTO offers (citizen_name, citizen_phone, offer_date, item_id, quantity, status, vehicle_id, assignment_date, latitude, longitude)
+VALUES ('John Doe', '1234567890', NOW(), (SELECT id FROM inventory WHERE name = 'Water'), 10, 'pending', NULL, NULL, 37.9838, 23.7275);
+-- Insert a request for water
+INSERT INTO requests (citizen_name, citizen_phone, request_date, item_id, quantity, status, vehicle_id, assignment_date, latitude, longitude)
+VALUES ('Jane Smith', '0987654321', NOW(), (SELECT id FROM inventory WHERE name = 'Water'), 5, 'pending', NULL, NULL, 37.9820, 23.7260);
+select * from inventory;
+select * from offers;
+select * from vehicle_loads;
+select * from requests;
+select * from vehicles;
+select * from announcements;
+select * from announcement_items where announcement_id=2;
+delete from offers where citizen_username='citizen2';
+
+ -- Indexes για τον πίνακα vehicles
+CREATE INDEX idx_vehicles_rescuer_id ON vehicles (rescuer_id);
+-- Indexes για τον πίνακα inventory
+CREATE INDEX idx_inventory_category_id ON inventory (category_id);
+-- Indexes για τον πίνακα offers
+CREATE INDEX idx_offers_status ON offers (status);
+-- Indexes για τον πίνακα requests
+CREATE INDEX idx_requests_status ON requests (status);

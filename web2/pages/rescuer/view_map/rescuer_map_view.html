@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescuer Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 70%;
+            float: left;
+        }
+        .filter-buttons {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        #taskList {
+            height: 100vh;
+            width: 30%;
+            float: right;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: -2px 0px 5px rgba(0,0,0,0.2);
+        }
+        .task-item {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .task-item button {
+            margin-top: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="taskList">
+        <h3>Current Tasks</h3>
+        <div id="tasksContainer"></div>
+    </div>
+
+    <div class="filter-buttons">
+        <label><input type="checkbox" id="showPendingRequests" checked> Pending Requests</label>
+        <label><input type="checkbox" id="showActiveRequests" checked> Active Requests</label>
+        <label><input type="checkbox" id="showOffers" checked> Offers</label>
+        <label><input type="checkbox" id="showLines" checked> Show Lines</label>
+        <button id="setVehicleLocationButton">Set Vehicle Location</button>
+        <button id="saveVehicleLocationButton" style="display: none;">Save Vehicle Location</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="rescuer_map.js"></script>
+</body>
+</html>
