@@ -1,5 +1,6 @@
 <?php
 include '../../../includes/db_connect.php';
+include '../../../includes/citizen_access.php';
 session_start();
 
 $citizen_username = $_SESSION['username'];  // Παίρνουμε το username από το session

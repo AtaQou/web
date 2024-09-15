@@ -1,6 +1,6 @@
 <?php
 include '../../../includes/db_connect.php';
-
+include '../../../includes/rescuer_access.php';
 try {
     $stmt = $conn->prepare("SELECT id, name FROM inventory");
     $stmt->execute();

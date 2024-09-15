@@ -1,4 +1,5 @@
 <?php
+include '../../../includes/admin_access.php';
 include '../../../includes/db_connect.php';
 
 header('Content-Type: application/json');
