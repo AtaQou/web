@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload JSON and Select Categories</title>
+    <style>
+        .non-selectable {
+            color: lightgray;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload JSON File and Select Categories</h1>
+
+    <!-- Display message if any -->
+    <div id="message"></div>
+
+    <!-- Form for uploading JSON file -->
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="json_file" accept=".json" required>
+        <input type="button" value="Upload JSON" onclick="uploadFile();">
+    </form>
+
+    <!-- Form for selecting categories and items -->
+    <form id="filterForm" onsubmit="return false;">
+        <h2>Categories</h2>
+        <!-- Categories will be loaded here by JavaScript -->
+        <div id="categories"></div>
+
+        <h2>Items</h2>
+        <!-- Items will be loaded here by JavaScript -->
+        <div id="items"></div>
+
+        <input type="button" value="Insert Selected Data" onclick="submitForm();">
+    </form>
+
+    <form action="manage.html" method="get">
+        <input type="submit" value="Back to Manage Page">
+    </form>
+
+    <script>
+        let displayedItems = [];
+
+        function uploadFile() {
+            const formData = new FormData(document.getElementById('uploadForm'));
+
+            fetch('uploadjson.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('message').innerText = data.message;
+                if (data.status === 'success') {
+                    loadCategoriesAndItems(true); // Reload data after successful upload
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerText = 'Error uploading file.';
+                console.error('Error:', error);
+            });
+        }
+
+        function loadCategoriesAndItems(initialLoad = false) {
+            fetch('loadjson.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Render categories
+                        renderCategories(data.categories);
+
+                        // Render items
+                        if (initialLoad) {
+                            displayedItems = data.items; // Save all items initially
+                        }
+                        renderItems(displayedItems);
+                    } else {
+                        document.getElementById('message').innerText = data.message;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('message').innerText = 'Error loading data.';
+                    console.error('Fetch error:', error);
+                });
+        }
+
+        function renderCategories(categories) {
+            let categoriesHtml = '';
+            categories.forEach(category => {
+                categoriesHtml += `<input type="checkbox" name="selected_categories[]" value="${category.id}" ${category.selected ? 'checked disabled' : ''} onchange="filterItems();">`;
+                categoriesHtml += `${category.name} (ID: ${category.id}) ${category.selected ? '(Already in DB)' : ''}<br>`;
+            });
+            document.getElementById('categories').innerHTML = categoriesHtml;
+        }
+
+        function renderItems(items) {
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `<input type="checkbox" name="selected_items[]" value="${item.id}">`;
+                itemsHtml += `${item.name} (Category ID: ${item.category}) ${item.description}<br>`;
+                itemsHtml += `Quantity: <input type="number" name="quantity_${item.id}" min="1" value="1"><br>`;
+            });
+            document.getElementById('items').innerHTML = itemsHtml;
+        }
+
+        function filterItems() {
+            const selectedCategories = Array.from(document.querySelectorAll('input[name="selected_categories[]"]:checked')).map(el => el.value);
+            const filteredItems = displayedItems.filter(item => selectedCategories.includes(item.category));
+            renderItems(filteredItems);
+        }
+
+        function submitForm() {
+            const formData = new FormData(document.getElementById('filterForm'));
+            formData.append('action', 'managecategory');
+
+            fetch('managecategory.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('message').innerText = data.message;
+                if (data.status === 'success') {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerText = 'Error submitting data.';
+                console.error('Error:', error);
+            });
+        }
+
+        // Load categories and items on page load if not uploading a file
+        document.addEventListener('DOMContentLoaded', function () {
+            loadCategoriesAndItems(false);
+        });
+    </script>
+</body>
+</html>

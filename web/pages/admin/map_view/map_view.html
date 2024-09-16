@@ -87,7 +87,7 @@
 
                 // Add request markers
                 data.requests.forEach(request => {
-                    const requestIconColor = getMarkerColor(request.status);
+                    const requestIconColor = getMarkerColor(request.status, 'request');
                     const requestMarker = L.marker([request.latitude, request.longitude], {
                         icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${requestIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
                     })
@@ -102,7 +102,7 @@
 
                 // Add offer markers
                 data.offers.forEach(offer => {
-                    const offerIconColor = getMarkerColor(offer.status);
+                    const offerIconColor = getMarkerColor(offer.status, 'offer');
                     const offerMarker = L.marker([offer.latitude, offer.longitude], {
                         icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${offerIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
                     })
@@ -159,16 +159,18 @@
                 updateLines();
             });
 
-        function getMarkerColor(status) {
-            switch (status) {
-                case 'pending':
-                    return 'yellow';
-                case 'active':
-                    return 'orange';
-                case 'completed':
-                    return 'green';
-                default:
-                    return 'grey';
+        function getMarkerColor(status, type = '') {
+            // Different colors for each status and type
+            if (status === 'pending' && type === 'request') {
+                return 'yellow'; // Pending Requests
+            } else if (status === 'active' && type === 'request') {
+                return 'orange'; // Active Requests
+            } else if (status === 'pending' && type === 'offer') {
+                return 'red'; // Pending Offers
+            } else if (status === 'active' && type === 'offer') {
+                return 'purple'; // Active Offers
+            } else {
+                return 'grey';
             }
         }
 
@@ -188,9 +190,12 @@
         // Update markers based on filters
         function updateMarkers() {
             vehicleMarkers.forEach(v => {
-                if (document.getElementById('showActiveVehicles').checked && v.vehicle.active) {
+                // Show active vehicles if they are busy
+                if (document.getElementById('showActiveVehicles').checked && v.vehicle.status === 'busy') {
                     v.marker.addTo(map);
-                } else if (document.getElementById('showInactiveVehicles').checked && !v.vehicle.active) {
+                }
+                // Show inactive vehicles if they are available
+                else if (document.getElementById('showInactiveVehicles').checked && v.vehicle.status === 'available') {
                     v.marker.addTo(map);
                 } else {
                     map.removeLayer(v.marker);

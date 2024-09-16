@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Categories and Items</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make an AJAX request to clear session data
+            fetch('clear_session_data.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Redirect to manage.html after clearing session data
+                        window.location.href = 'manage.html';
+                    } else {
+                        console.error('Failed to clear session data');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
 </head>
 <body>
     <h1>Manage Categories and Items</h1>
@@ -16,9 +34,7 @@
     </form>
 
     <h2>Or Upload JSON File</h2>
-    <form action="decodejson.php" method="post" enctype="multipart/form-data">
-        <label for="json_file">Upload JSON file:</label><br>
-        <input type="file" id="json_file" name="json_file" accept=".json"><br><br>
+    <form action="yourform.html" method="post" enctype="multipart/form-data">
         <input type="submit" value="Load JSON Data from File">
     </form>
 

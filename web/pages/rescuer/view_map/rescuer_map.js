@@ -145,8 +145,17 @@ function assignRequest(requestId) {
     })
     .then(response => response.text())
     .then(data => {
-        alert('Request has been assigned to your vehicle.');
-        location.reload();
+        // Ελέγχουμε αν η απάντηση περιέχει κάποιο μήνυμα σφάλματος
+        if (data.includes("Error:")) {
+            alert(data); // Προβάλει το ακριβές μήνυμα σφάλματος που στέλνει το PHP script
+        } else {
+            alert('Request has been assigned to your vehicle.');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while assigning the request.');
     });
 }
 
@@ -163,10 +172,20 @@ function assignOffer(offerId) {
     })
     .then(response => response.text())
     .then(data => {
-        alert('Offer has been assigned to your vehicle.');
-        location.reload();
+        // Ελέγχουμε αν η απάντηση περιέχει κάποιο μήνυμα σφάλματος
+        if (data.includes("Error:")) {
+            alert(data); // Προβάλει το ακριβές μήνυμα σφάλματος που στέλνει το PHP script
+        } else {
+            alert('Offer has been assigned to your vehicle.');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while assigning the offer.');
     });
 }
+
 
 function completeTask(type, taskId) {
     fetch('complete_task.php', {

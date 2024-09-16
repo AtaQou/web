@@ -12,40 +12,82 @@
 </head>
 <body>
     <h1>Select Categories and Items to Insert into Database</h1>
- 
+
     <!-- Display message if any -->
- <div id="message"></div>
+    <div id="message"></div>
 
- <!-- Form for selecting categories and items -->
- <form id="filterForm" onsubmit="return false;">
-     <h2>Categories</h2>
-     <!-- Categories will be loaded here by JavaScript -->
-     <div id="categories"></div>
+    <!-- Form for selecting categories and items -->
+    <form id="filterForm" onsubmit="return false;">
+        <h2>Categories</h2>
+        <!-- Categories will be loaded here by JavaScript -->
+        <div id="categories"></div>
 
-     <h2>Items</h2>
-     <!-- Items will be loaded here by JavaScript -->
-     <div id="items"></div>
+        <h2>Items</h2>
+        <!-- Items will be loaded here by JavaScript -->
+        <div id="items"></div>
 
-     <input type="button" value="Insert Selected Data" onclick="submitForm();">
- </form>
+        <input type="button" value="Insert Selected Data" onclick="submitForm();">
+    </form>
 
- <form action="manage.html" method="get">
-     <input type="submit" value="Back to Manage Page">
- </form>
+    <form action="manage.html" method="get">
+        <input type="submit" value="Back to Manage Page">
+    </form>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCategoriesAndItems();
-        
-            function loadCategoriesAndItems(selectedCategories = []) {
-                const query = selectedCategories.map(category => `categories[]=${encodeURIComponent(category)}`).join('&');
-        
-                fetch('loadjson.php?' + query)
-                .then(response => response.json())
+        // Store displayed items to avoid duplicates
+        let displayedItems = [];
+        let selectedCategories = [];
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Load data when the page initially loads
+            fetch('decodejson.php')
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Error decoding JSON data');
+                })
+                .then(() => {
+                    loadCategoriesAndItems(true); // Load categories and their items initially
+                })
+                .catch(error => {
+                    document.getElementById('message').innerText = 'Error loading data.';
+                    console.error('Fetch error:', error);
+                });
+        });
+
+        // Load categories and items from the server
+        function loadCategoriesAndItems(initialLoad = false) {
+            const query = selectedCategories.map(category => `categories[]=${encodeURIComponent(category)}`).join('&');
+
+            fetch('loadjson.php?' + query)
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Error fetching data from loadjson.php');
+                })
                 .then(data => {
                     if (data.status === 'success') {
+                        // Render categories
                         renderCategories(data.categories, selectedCategories);
-                        renderItems(data.items);
+
+                        if (initialLoad) {
+                            // On initial load, only show items from already selected categories
+                            const initialItems = data.items.filter(item =>
+                                data.categories.some(category => category.selected && category.id === item.category)
+                            );
+                            displayedItems = initialItems; // Store these items
+                        } else {
+                            // When user selects new categories, add new items without duplicating
+                            const newItems = data.items.filter(item =>
+                                !displayedItems.some(displayedItem => displayedItem.id === item.id)
+                            );
+                            displayedItems = displayedItems.concat(newItems); // Update displayed items
+                        }
+
+                        // Render the updated list of items
+                        renderItems(displayedItems);
                     } else {
                         document.getElementById('message').innerText = data.message;
                     }
@@ -54,37 +96,43 @@
                     document.getElementById('message').innerText = 'Error loading data.';
                     console.error('Fetch error:', error);
                 });
-            }
-        
-            function renderCategories(categories, selectedCategories) {
-                let categoriesHtml = '';
-                categories.forEach(category => {
-                    const isChecked = selectedCategories.includes(category.id.toString()) ? 'checked' : '';
-                    categoriesHtml += `<input type="checkbox" name="selected_categories[]" value="${category.id}" ${category.selected ? 'checked disabled' : ''} ${isChecked} onchange="filterItems();">`;
-                    categoriesHtml += `${category.name} (ID: ${category.id}) ${category.selected ? '(Already in DB)' : ''}<br>`;
-                });
-                document.getElementById('categories').innerHTML = categoriesHtml;
-            }
-        
-            function renderItems(items) {
-                let itemsHtml = '';
-                items.forEach(item => {
-                    itemsHtml += `<input type="checkbox" name="selected_items[]" value="${item.id}">`;
-                    itemsHtml += `${item.name} (Category ID: ${item.category}) ${item.description}<br>`;
-                    itemsHtml += `Quantity: <input type="number" name="quantity_${item.id}" min="1" value="1"><br>`;
-                });
-                document.getElementById('items').innerHTML = itemsHtml;
-            }
-        
-            function filterItems() {
-                const selectedCategories = Array.from(document.querySelectorAll('input[name="selected_categories[]"]:checked')).map(el => el.value);
-                loadCategoriesAndItems(selectedCategories);
-            }
-        
-            window.filterItems = filterItems; // Make function globally accessible
-        }); 
+        }
 
-        // Function to submit the form via AJAX
+        // Render categories
+        function renderCategories(categories, selectedCategories) {
+            let categoriesHtml = '';
+            categories.forEach(category => {
+                const isChecked = selectedCategories.includes(category.id.toString()) ? 'checked' : '';
+                categoriesHtml += `<input type="checkbox" name="selected_categories[]" value="${category.id}" ${category.selected ? 'checked disabled' : ''} ${isChecked} onchange="filterItems();">`;
+                categoriesHtml += `${category.name} (ID: ${category.id}) ${category.selected ? '(Already in DB)' : ''}<br>`;
+            });
+            document.getElementById('categories').innerHTML = categoriesHtml;
+        }
+
+        // Render items
+        function renderItems(items) {
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `<input type="checkbox" name="selected_items[]" value="${item.id}">`;
+                itemsHtml += `${item.name} (Category ID: ${item.category}) ${item.description}<br>`;
+                itemsHtml += `Quantity: <input type="number" name="quantity_${item.id}" min="1" value="1"><br>`;
+            });
+            document.getElementById('items').innerHTML = itemsHtml;
+        }
+
+        // Filter items based on selected categories
+        function filterItems() {
+            // Update selected categories
+            selectedCategories = Array.from(document.querySelectorAll('input[name="selected_categories[]"]:checked')).map(el => el.value);
+
+            // Reload categories and items based on selected categories
+            loadCategoriesAndItems(false);
+        }
+
+        // Make filterItems globally accessible
+        window.filterItems = filterItems;
+
+        // Submit form via AJAX
         function submitForm() {
             const formData = new FormData(document.getElementById('filterForm'));
             formData.append('action', 'managecategory');
@@ -93,14 +141,17 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('message').innerText = data.message;
-                if (data.status === 'success') {
-                    location.reload(); // Reload to refresh the data
-                }
-            })
-            .catch(error => console.error('Error:', error));
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('message').innerText = data.message;
+                    if (data.status === 'success') {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('message').innerText = 'Error submitting data.';
+                    console.error('Error:', error);
+                });
         }
     </script>
 </body>

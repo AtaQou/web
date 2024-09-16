@@ -15,6 +15,9 @@ $vehicle = $vehicle_stmt->fetch(PDO::FETCH_ASSOC);
 
 $tasks = [];
 if ($vehicle) {
+    $vehicle_id = $vehicle['id'];
+
+    // Fetch current active tasks
     $tasks_query = "
         SELECT id AS request_id, 'request' AS type, citizen_username, request_date, item_id, quantity, status AS request_status 
         FROM requests 
@@ -24,8 +27,15 @@ if ($vehicle) {
         FROM offers 
         WHERE vehicle_id = :vehicle_id AND status = 'active'";
     $tasks_stmt = $conn->prepare($tasks_query);
-    $tasks_stmt->execute(['vehicle_id' => $vehicle['id']]);
+    $tasks_stmt->execute(['vehicle_id' => $vehicle_id]);
     $tasks = $tasks_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // If no active tasks, update vehicle status to available
+    if (empty($tasks)) {
+        $update_vehicle_status_query = "UPDATE vehicles SET status = 'available' WHERE id = :vehicle_id";
+        $update_vehicle_status_stmt = $conn->prepare($update_vehicle_status_query);
+        $update_vehicle_status_stmt->execute(['vehicle_id' => $vehicle_id]);
+    }
 }
 
 header('Content-Type: application/json');
