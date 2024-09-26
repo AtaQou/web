@@ -23,7 +23,7 @@ if ($vehicle) {
         FROM requests 
         WHERE vehicle_id = :vehicle_id AND status = 'active'
         UNION ALL
-        SELECT id AS offer_id, 'offer' AS type, NULL AS citizen_username, offer_date AS request_date, item_id AS item_id, quantity AS quantity, status AS offer_status
+        SELECT id AS offer_id, 'offer' AS type, citizen_username, offer_date AS request_date, item_id, quantity, status AS offer_status
         FROM offers 
         WHERE vehicle_id = :vehicle_id AND status = 'active'";
     $tasks_stmt = $conn->prepare($tasks_query);
