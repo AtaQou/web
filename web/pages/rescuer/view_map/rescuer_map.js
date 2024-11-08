@@ -234,7 +234,6 @@ function distanceToTask(lat, lng) {
     return distance;
 }
 
-// Function to fetch and display current tasks in the sidebar
 function loadCurrentTasks() {
     fetch('current_task.php')
         .then(response => response.json())
@@ -270,6 +269,7 @@ function loadCurrentTasks() {
                     content = `
                         <div>
                             <h3>Offer</h3>
+                            <p><b>From:</b> ${task.citizen_username}</p> <!-- Προσθέτουμε το όνομα του χρήστη -->
                             <p><b>Date:</b> ${task.request_date}</p>
                             <p><b>Item:</b> ${task.item_id}</p>
                             <p><b>Quantity:</b> ${task.quantity}</p>

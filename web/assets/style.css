@@ -141,6 +141,25 @@ nav a:hover {
         width: 100%;
     }
 }
+
+/* Επιπλέον Ρυθμίσεις για κινητές οθόνες */
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.8em; /* Μικρότερος τίτλος για κινητά */
+    }
+
+    button {
+        width: 100%; /* Κουμπιά πλήρους πλάτους */
+        padding: 15px; /* Μεγαλύτερο padding */
+        font-size: 1.1em; /* Μεγαλύτερη γραμματοσειρά */
+    }
+
+    .logout-button {
+        width: 100%;
+        font-size: 1em; /* Μεγαλύτερη γραμματοσειρά */
+    }
+}
+
 /* Κεντράρισμα και στυλ για το κουμπί Logout */
 .logout-container {
     display: flex;

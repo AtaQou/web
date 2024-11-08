@@ -2,27 +2,43 @@
 include '../../../includes/db_connect.php';
 include '../../../includes/admin_access.php';
 
-// Fetch vehicles with their associated requests, offers, cargo, and rescuer name
+// Fetch vehicles with their associated requests, offers, and cargo
 $vehicles_query = "
     SELECT 
         v.id AS vehicle_id, 
-        v.username AS vehicle_name, 
-        u.name AS rescuer_name,
+        v.username, 
         v.status, 
         v.latitude, 
         v.longitude, 
-        GROUP_CONCAT(DISTINCT CONCAT(r.citizen_username, ' (Item: ', ir.name, ')') SEPARATOR ', ') AS requests,
-        GROUP_CONCAT(DISTINCT CONCAT(o.citizen_username, ' (Item: ', io.name, ')') SEPARATOR ', ') AS offers,
-        GROUP_CONCAT(DISTINCT CONCAT(i.name, ' ', vl.quantity) SEPARATOR ', ') AS cargo
+        u.username AS rescuer_username,   -- Changed to include rescuer's username
+        u.phone AS rescuer_phone,
+        GROUP_CONCAT(DISTINCT CONCAT(i.name, ' ', vl.quantity) SEPARATOR ', ') AS cargo,
+        GROUP_CONCAT(DISTINCT subquery.task_description ORDER BY subquery.task_type, subquery.task_date SEPARATOR '<br>') AS tasks
     FROM vehicles v
-    LEFT JOIN users u ON v.rescuer_id = u.id
-    LEFT JOIN requests r ON v.id = r.vehicle_id AND r.status IN ('pending', 'active')
-    LEFT JOIN offers o ON v.id = o.vehicle_id AND o.status IN ('pending', 'active')
-    LEFT JOIN inventory ir ON r.item_id = ir.id
-    LEFT JOIN inventory io ON o.item_id = io.id
+    LEFT JOIN users u ON v.rescuer_id = u.id   -- Use rescuer_id instead of username
     LEFT JOIN vehicle_loads vl ON v.id = vl.vehicle_id
     LEFT JOIN inventory i ON vl.item_id = i.id
-    GROUP BY v.id";
+    LEFT JOIN (
+        SELECT 
+            r.vehicle_id,
+            'Request' AS task_type,
+            CONCAT('Request: ', r.citizen_username, ' - ', r.item_id, ' (', r.quantity, ') on ', r.request_date) AS task_description,
+            r.request_date AS task_date
+        FROM requests r
+        WHERE r.status IN ('pending', 'active')
+        
+        UNION ALL
+        
+        SELECT 
+            o.vehicle_id,
+            'Offer' AS task_type,
+            CONCAT('Offer: ', o.citizen_username, ' - ', o.item_id, ' (', o.quantity, ') on ', o.offer_date) AS task_description,
+            o.offer_date AS task_date
+        FROM offers o
+        WHERE o.status IN ('pending', 'active')
+    ) AS subquery ON v.id = subquery.vehicle_id
+    GROUP BY v.id
+";
 $vehicles_result = $conn->query($vehicles_query);
 $vehicles = [];
 while ($row = $vehicles_result->fetch(PDO::FETCH_ASSOC)) {

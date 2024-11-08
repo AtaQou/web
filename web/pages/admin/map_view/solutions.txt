@@ -1,0 +1,22 @@
+$requests_query = "
+    SELECT 
+        r.*, 
+        i.name AS item_name 
+    FROM requests r
+    LEFT JOIN inventory i ON r.item_id = i.id
+    WHERE r.status IN ('pending', 'active')";
+
+
+$offers_query = "
+    SELECT 
+        o.*, 
+        i.name AS item_name 
+    FROM offers o
+    LEFT JOIN inventory i ON o.item_id = i.id
+    WHERE o.status IN ('pending', 'active')";
+
+
+
+.bindPopup(`<b>Request from:</b> ${request.citizen_username}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_name}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`)
+
+.bindPopup(`<b>Offer from:</b> ${offer.citizen_username}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_name}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`)
