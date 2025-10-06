@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Vehicle Cargo</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <h1>Manage Vehicle Cargo</h1>
+    <p id="rescuer-info"></p>
+    <p id="vehicle-info"></p>
+
+    <h2>Current Vehicle Cargo</h2>
+    <ul id="cargo-list"></ul>
+
+    <h2>Load/Unload Items</h2>
+    <form id="load-form">
+        <label for="item-id">Item:</label>
+        <select id="item-id" name="item_id"></select>
+
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" min="1">
+
+        <input type="hidden" name="action" value="load">
+        <button type="submit">Load Item</button>
+    </form>
+
+    <button id="unload-button">Unload All Items</button>
+    <br><br>
+    <button id="back-button">Back to Home</button>
+
+    <script>
+        $(document).ready(function() {
+            // Function to fetch and display rescuer and vehicle info
+            function fetchRescuerAndVehicleInfo() {
+                $.ajax({
+                    url: 'fetch_vehicle_cargo.php',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            $('#rescuer-info').text('User ID: ' + data.user_id);
+                            $('#vehicle-info').text('Vehicle: ' + data.vehicle_name);
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to fetch rescuer and vehicle info.');
+                    }
+                });
+            }
+
+            // Function to fetch and display vehicle cargo
+            function updateCargo() {
+                $.ajax({
+                    url: 'fetch_vehicle_cargo.php',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            var cargoList = $('#cargo-list');
+                            cargoList.empty();
+                            data.items.forEach(function(item) {
+                                cargoList.append('<li>' + item.name + ': ' + item.quantity + '</li>');
+                            });
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to fetch cargo.');
+                    }
+                });
+            }
+
+            // Function to fetch available items
+            function fetchItems() {
+                $.ajax({
+                    url: 'fetch_inventory_items.php',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            var itemSelect = $('#item-id');
+                            itemSelect.empty();
+                            data.items.forEach(function(item) {
+                                itemSelect.append('<option value="' + item.id + '">' + item.name + '</option>');
+                            });
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to fetch items.');
+                    }
+                });
+            }
+
+            // Load rescuer info, items, and cargo on page load
+            fetchRescuerAndVehicleInfo();
+            fetchItems();
+            updateCargo();
+
+            // Handle form submission for loading items
+            $('#load-form').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: 'update_vehicle_cargo.php',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            alert(data.success);
+                            updateCargo(); // Update cargo list immediately after load
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to update cargo.');
+                    }
+                });
+            });
+
+            // Handle unload button click
+            $('#unload-button').on('click', function() {
+                $.ajax({
+                    url: 'update_vehicle_cargo.php',
+                    method: 'POST',
+                    data: { action: 'unload_all' }, // Ensure the correct action is sent
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            alert(data.success);
+                            updateCargo(); // Update cargo list immediately after unload
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to unload cargo.');
+                    }
+                });
+            });
+
+            // Handle back button click
+            $('#back-button').on('click', function() {
+                window.location.href = '../rescuerhome.php';
+            });
+        });
+    </script>
+
+</body>
+</html>

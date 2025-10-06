@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .filter-buttons {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .filter-buttons label {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="filter-buttons">
+        <label><input type="checkbox" id="showPendingRequests" checked> Pending Requests</label>
+        <label><input type="checkbox" id="showActiveRequests" checked> Active Requests</label>
+        <label><input type="checkbox" id="showOffers" checked> Offers</label>
+        <label><input type="checkbox" id="showActiveVehicles" checked> Active Vehicles</label>
+        <label><input type="checkbox" id="showInactiveVehicles" checked> Inactive Vehicles</label>
+        <label><input type="checkbox" id="showLines" checked> Show Lines</label>
+        <button id="changeBaseButton">Change Base Location</button>
+        <button id="saveBaseButton">Save Base Location</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([37.9838, 23.7275], 13);
+    
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+    
+        var baseMarker;
+        var changingBase = false;
+    
+        var vehicleMarkers = [];
+        var requestMarkers = [];
+        var offerMarkers = [];
+        var lines = [];
+    
+        fetch('fetch_map_data.php')
+            .then(response => response.json())
+            .then(data => {
+                // Add vehicle markers
+                data.vehicles.forEach(vehicle => {
+                    var marker = L.marker([vehicle.latitude, vehicle.longitude], {
+                        icon: L.divIcon({className: 'vehicle-icon', html: `<div style="background: #00f; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Vehicle Name:</b> ${vehicle.vehicle_name}<br><b>Vehicle Rescuer:</b> ${vehicle.rescuer_name}<br><b>Cargo:</b> ${vehicle.cargo}<br><b>Status:</b> ${vehicle.status}<br>${vehicle.requests ? `<b>Requests:</b> ${vehicle.requests}<br>` : ''}${vehicle.offers ? `<b>Offers:</b> ${vehicle.offers}<br>` : ''}`)
+                    .addTo(map);
+                    
+                    vehicleMarkers.push({
+                        marker: marker,
+                        vehicle: vehicle
+                    });
+    
+                    // Connect vehicle with request and offer if available
+                    if (vehicle.request_id) {
+                        const request = data.requests.find(r => r.id === vehicle.request_id);
+                        if (request) {
+                            createLine(vehicle, request, 'blue');
+                        }
+                    }
+    
+                    if (vehicle.offer_id) {
+                        const offer = data.offers.find(o => o.id === vehicle.offer_id);
+                        if (offer) {
+                            createLine(vehicle, offer, 'green');
+                        }
+                    }
+                });
+    
+                // Add request markers
+                data.requests.forEach(request => {
+                    const requestIconColor = getMarkerColor(request.status, 'request');
+                    const requestMarker = L.marker([request.latitude, request.longitude], {
+                        icon: L.divIcon({className: 'request-icon', html: `<div style="background: ${requestIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Request from:</b> ${request.citizen_username}<br><b>Phone:</b> ${request.citizen_phone}<br><b>Item:</b> ${request.item_name}<br><b>Quantity:</b> ${request.quantity}<br><b>Request Date:</b> ${request.request_date}`)
+                    .addTo(map);
+    
+                    requestMarkers.push({
+                        marker: requestMarker,
+                        request: request
+                    });
+                });
+    
+                // Add offer markers
+                data.offers.forEach(offer => {
+                    const offerIconColor = getMarkerColor(offer.status, 'offer');
+                    const offerMarker = L.marker([offer.latitude, offer.longitude], {
+                        icon: L.divIcon({className: 'offer-icon', html: `<div style="background: ${offerIconColor}; width: 25px; height: 41px; border-radius: 50%;"></div>`})
+                    })
+                    .bindPopup(`<b>Offer from:</b> ${offer.citizen_username}<br><b>Phone:</b> ${offer.citizen_phone}<br><b>Item:</b> ${offer.item_name}<br><b>Quantity:</b> ${offer.quantity}<br><b>Offer Date:</b> ${offer.offer_date}`)
+                    .addTo(map);
+    
+                    offerMarkers.push({
+                        marker: offerMarker,
+                        offer: offer
+                    });
+                });
+    
+                // Add base marker
+                if (data.base_location) {
+                    baseMarker = L.marker([data.base_location.latitude, data.base_location.longitude], {draggable: false})
+                        .addTo(map)
+                        .bindPopup('<b>Base Location</b>');
+                }
+    
+                // Handle base location change
+                document.getElementById('changeBaseButton').addEventListener('click', function () {
+                    if (baseMarker) {
+                        baseMarker.dragging.enable();
+                        changingBase = true;
+                        document.getElementById('saveBaseButton').style.display = 'block';
+                    }
+                });
+    
+                document.getElementById('saveBaseButton').addEventListener('click', function () {
+                    if (changingBase && baseMarker) {
+                        var newLatLng = baseMarker.getLatLng();
+                        fetch('update_base_location.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                latitude: newLatLng.lat,
+                                longitude: newLatLng.lng
+                            })
+                        })
+                        .then(response => response.text())
+                        .then(data => {
+                            baseMarker.dragging.disable();
+                            changingBase = false;
+                            document.getElementById('saveBaseButton').style.display = 'none';
+                            alert('Base location updated successfully.');
+                        });
+                    }
+                });
+    
+                // Initialize markers and lines based on current filter state
+                updateMarkers();
+                updateLines();
+            });
+    
+        function getMarkerColor(status, type = '') {
+            // Different colors for requests, offers, and vehicles based on their status
+            if (type === 'request') {
+                return status === 'active' ? 'orange' : 'red';
+            } else if (type === 'offer') {
+                return status === 'active' ? 'green' : 'purple';
+            }
+            return status === 'busy' ? 'red' : 'green';
+        }
+    
+        function createLine(start, end, color) {
+            var line = L.polyline([
+                [start.latitude, start.longitude],
+                [end.latitude, end.longitude]
+            ], {color: color}).addTo(map);
+    
+            lines.push({
+                line: line,
+                start: start,
+                end: end
+            });
+        }
+    
+        function updateMarkers() {
+            vehicleMarkers.forEach(v => {
+                if (document.getElementById('showActiveVehicles').checked && v.vehicle.status === 'busy') {
+                    v.marker.addTo(map);
+                } else if (document.getElementById('showInactiveVehicles').checked && v.vehicle.status === 'available') {
+                    v.marker.addTo(map);
+                } else {
+                    map.removeLayer(v.marker);
+                }
+            });
+    
+            requestMarkers.forEach(r => {
+                if (document.getElementById('showPendingRequests').checked && r.request.status === 'pending') {
+                    r.marker.addTo(map);
+                } else if (document.getElementById('showActiveRequests').checked && r.request.status === 'active') {
+                    r.marker.addTo(map);
+                } else {
+                    map.removeLayer(r.marker);
+                }
+            });
+    
+            offerMarkers.forEach(o => {
+                if (document.getElementById('showOffers').checked) {
+                    o.marker.addTo(map);
+                } else {
+                    map.removeLayer(o.marker);
+                }
+            });
+        }
+    
+        function updateLines() {
+            lines.forEach(l => {
+                if (document.getElementById('showLines').checked) {
+                    l.line.addTo(map);
+                } else {
+                    map.removeLayer(l.line);
+                }
+            });
+        }
+    
+        document.getElementById('showPendingRequests').addEventListener('change', updateMarkers);
+        document.getElementById('showActiveRequests').addEventListener('change', updateMarkers);
+        document.getElementById('showOffers').addEventListener('change', updateMarkers);
+        document.getElementById('showActiveVehicles').addEventListener('change', updateMarkers);
+        document.getElementById('showInactiveVehicles').addEventListener('change', updateMarkers);
+        document.getElementById('showLines').addEventListener('change', updateLines);
+    </script>
+    

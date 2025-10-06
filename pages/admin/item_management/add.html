@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Categories or Items</title>
+    <style>
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .error-message {
+            color: red;
+        }
+        .success-message {
+            color: green;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Add Categories or Items</h1>
+
+        <p id="message" class="error-message" style="display: none;"></p>
+        <p id="success-message" class="success-message" style="display: none;"></p>
+
+        <form id="add-form">
+            <div class="form-group">
+                <label for="select_type">Choose what to add:</label>
+                <select id="select_type" name="type" required>
+                    <option value="">--Select--</option>
+                    <option value="category">Category</option>
+                    <option value="item">Item</option>
+                </select>
+            </div>
+
+            <!-- Fields for category -->
+            <div id="category_fields" class="form-group" style="display:none;">
+                <label for="category_name">Category Name:</label>
+                <input type="text" id="category_name" name="category_name"><br>
+
+                <label for="category_description">Category Description:</label>
+                <textarea id="category_description" name="category_description"></textarea>
+            </div>
+
+            <!-- Fields for item -->
+            <div id="item_fields" class="form-group" style="display:none;">
+                <label for="item_name">Item Name:</label>
+                <input type="text" id="item_name" name="item_name"><br>
+
+                <label for="category_id">Category:</label>
+                <select id="category_id" name="category_id"></select><br>
+
+                <label for="item_description">Item Description:</label>
+                <textarea id="item_description" name="item_description"></textarea><br>
+
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" min="0" value="0">
+            </div>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <button onclick="window.location.href='manage.html'">Back to Manage</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Load categories when the page loads
+            loadCategories();
+
+            // Show/hide fields based on selection
+            $('#select_type').on('change', function() {
+                const selectedType = $(this).val();
+                if (selectedType === 'category') {
+                    $('#category_fields').show();
+                    $('#item_fields').hide();
+                } else if (selectedType === 'item') {
+                    $('#category_fields').hide();
+                    $('#item_fields').show();
+                    loadCategories(); // Reload categories when 'item' is selected
+                } else {
+                    $('#category_fields').hide();
+                    $('#item_fields').hide();
+                }
+            });
+
+            // Submit the form
+            $('#add-form').on('submit', function(e) {
+                e.preventDefault();
+                const formData = $(this).serialize();
+
+                $.ajax({
+                    url: 'process_add.php',
+                    method: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            $('#success-message').text('Data added successfully!').show();
+                            $('#message').hide();
+                            $('#add-form')[0].reset();
+                        } else {
+                            $('#message').text('Error: ' + response.message).show();
+                            $('#success-message').hide();
+                        }
+                    },
+                    error: function() {
+                        $('#message').text('Failed to submit form.').show();
+                    }
+                });
+            });
+        });
+
+        // Function to load categories into the dropdown
+        function loadCategories() {
+            $.ajax({
+                url: 'get_categories.php',
+                method: 'GET',
+                success: function(data) {
+                    const categorySelect = $('#category_id');
+                    categorySelect.empty();
+                    categorySelect.append('<option value="">--Select Category--</option>');
+                    $.each(data.categories, function(index, category) {
+                        categorySelect.append(`<option value="${category.id}">${category.name}</option>`);
+                    });
+                },
+                error: function() {
+                    $('#message').text('Failed to load categories.').show();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -135,5 +135,14 @@ select * from vehicle_loads;
 select * from requests;
 select * from vehicles;
 select * from announcements;
-select * from announcement_items where announcement_id=1;
+select * from announcement_items where announcement_id=2;
 delete from offers where citizen_username='citizen2';
+
+ -- Indexes για τον πίνακα vehicles
+CREATE INDEX idx_vehicles_rescuer_id ON vehicles (rescuer_id);
+-- Indexes για τον πίνακα inventory
+CREATE INDEX idx_inventory_category_id ON inventory (category_id);
+-- Indexes για τον πίνακα offers
+CREATE INDEX idx_offers_status ON offers (status);
+-- Indexes για τον πίνακα requests
+CREATE INDEX idx_requests_status ON requests (status);

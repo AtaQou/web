@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Categories and Items</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make an AJAX request to clear session data
+            fetch('clear_session_data.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Redirect to manage.html after clearing session data
+                        window.location.href = 'manage.html';
+                    } else {
+                        console.error('Failed to clear session data');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</head>
+<body>
+    <h1>Manage Categories and Items</h1>
+
+    <h2>Load JSON Data</h2>
+    <form action="form.html" method="post">
+        <label for="json_url">Enter JSON URL:</label><br>
+        <input type="text" id="json_url" name="json_url" value="http://usidas.ceid.upatras.gr/web/2023/export.php"><br><br>
+        <input type="submit" value="Load JSON Data from URL">
+    </form>
+
+    <h2>Or Upload JSON File</h2>
+    <form action="yourform.html" method="post" enctype="multipart/form-data">
+        <input type="submit" value="Load JSON Data from File">
+    </form>
+
+    <h2>View Database</h2>
+    <form action="viewdb.php" method="get">
+        <input type="submit" value="View Categories and Items in Database">
+    </form>
+    
+    <h2>Add Your Own Items And Categories</h2>
+    <form action="add.html" method="get">
+        <input type="submit" value="Add Items And Categories">
+    </form>
+    <button onclick="window.location.href='../adminhome.php'">Back to Admin Home</button>
+</body>
+</html>
