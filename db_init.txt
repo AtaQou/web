@@ -118,7 +118,15 @@ CREATE TABLE IF NOT EXISTS requests (
 
     
 select * from users;
-drop table requests; 
+
+USE web;
+
+INSERT INTO users (username, password_hash, role, name, phone, latitude, longitude) VALUES
+('admin1', '1234', 'administrator', 'Admin One', '6900000001', NULL, NULL),
+('citizen1', 'abcd', 'citizen', 'Citizen One', '6900000002', 37.9838, 23.7275),
+('citizen2', 'abcd', 'citizen', 'Citizen Two', '6900000003', 37.9750, 23.7340),
+('rescuer1', 'pass', 'rescuer', 'Rescuer One', '6900000004', 37.9800, 23.7300),
+('rescuer2', 'pass', 'rescuer', 'Rescuer Two', '6900000005', 37.9810, 23.7280);
 
 INSERT INTO vehicles (username, cargo, status, latitude, longitude, rescuer_id) 
 VALUES ('test_user', 'Test cargo', 'available', 37.774929, -122.419418, 2);
