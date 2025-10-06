@@ -31,12 +31,12 @@ Setup Instructions
 3. Clone the Repository
    - Mac:
      cd /Applications/XAMPP/htdocs
-     git clone git@github.com:YourUsername/web.git
+     git clone git@github.com:AtaQou/web.git
      cd web
 
    - Windows:
      cd C:\xampp\htdocs
-     git clone git@github.com:YourUsername\web.git
+     git clone git@github.com:Ataqou\web.git
      cd web
 
 4. Start Docker MySQL
